@@ -1,0 +1,678 @@
+#cloud-config
+# Ubuntu 25.10 - DevBox Configuration (devbox as default user)
+
+hostname: devbox
+timezone: America/Bogota
+locale: es_CO.UTF-8
+
+# User configuration
+users:
+  - name: devbox
+    gecos: DevBox User
+    shell: /bin/bash
+    groups: [adm, cdrom, dip, plugdev, sudo]
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    lock_passwd: false
+
+# Packages
+packages:
+  - build-essential
+  - ca-certificates
+  - curl
+  - gh
+  - git
+  - gnupg
+  - language-pack-es
+  - locales
+  - lsb-release
+  - nano
+  - openssh-client
+  - openssh-server
+  - software-properties-common
+  - unzip
+  - wget
+
+package_update: true
+package_upgrade: true
+
+# Configuration files
+write_files:
+  # Custom .bashrc for devbox user
+  - path: /home/devbox/.bashrc
+    owner: devbox:devbox
+    permissions: '0644'
+    defer: true
+    content: |
+      # ~/.bashrc: executed by bash(1) for non-login shells.
+      # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+      # for examples
+
+      # If not running interactively, don't do anything
+      case $- in
+          *i*) ;;
+            *) return;;
+      esac
+
+      # ============================================================================
+      # Shell History Configuration
+      # ============================================================================
+
+      # don't put duplicate lines or lines starting with space in the history.
+      # See bash(1) for more options
+      HISTCONTROL=ignoreboth
+
+      # append to the history file, don't overwrite it
+      shopt -s histappend
+
+      # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+      HISTSIZE=10000
+      HISTFILESIZE=20000
+
+      # ============================================================================
+      # Shell Options
+      # ============================================================================
+
+      # check the window size after each command and, if necessary,
+      # update the values of LINES and COLUMNS.
+      shopt -s checkwinsize
+
+      # If set, the pattern "**" used in a pathname expansion context will
+      # match all files and zero or more directories and subdirectories.
+      shopt -s globstar
+
+      # make less more friendly for non-text input files, see lesspipe(1)
+      [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+      # ============================================================================
+      # Prompt Configuration
+      # ============================================================================
+
+      # set variable identifying the chroot you work in (used in the prompt below)
+      if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+          debian_chroot=$(cat /etc/debian_chroot)
+      fi
+
+      # set a fancy prompt (non-color, unless we know we "want" color)
+      case "$TERM" in
+          xterm-color|*-256color) color_prompt=yes;;
+      esac
+
+      # uncomment for a colored prompt, if the terminal has the capability; turned
+      # off by default to not distract the user: the focus in a terminal window
+      # should be on the output of commands, not on the prompt
+      #force_color_prompt=yes
+
+      if [ -n "$force_color_prompt" ]; then
+          if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+      	# We have color support; assume it's compliant with Ecma-48
+      	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+      	# a case would tend to support setf rather than setaf.)
+      	color_prompt=yes
+          else
+      	color_prompt=
+          fi
+      fi
+
+      if [ "$color_prompt" = yes ]; then
+          PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+      else
+          PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+      fi
+      unset color_prompt force_color_prompt
+
+      # If this is an xterm set the title to user@host:dir
+      case "$TERM" in
+      xterm*|rxvt*)
+          PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+          ;;
+      *)
+          ;;
+      esac
+
+      # ============================================================================
+      # Color Support
+      # ============================================================================
+
+      # enable color support of ls and also add handy aliases
+      if [ -x /usr/bin/dircolors ]; then
+          test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+          alias ls='ls --color=auto'
+          #alias dir='dir --color=auto'
+          #alias vdir='vdir --color=auto'
+
+          alias grep='grep --color=auto'
+          alias fgrep='fgrep --color=auto'
+          alias egrep='egrep --color=auto'
+      fi
+
+      # colored GCC warnings and errors
+      #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+
+      # ============================================================================
+      # Built-in Aliases
+      # ============================================================================
+
+      # Add an "alert" alias for long running commands.  Use like so:
+      #   sleep 10; alert
+      alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
+      # ============================================================================
+      # Bash Completion
+      # ============================================================================
+
+      # enable programmable completion features (you don't need to enable
+      # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+      # sources /etc/bash.bashrc).
+      if ! shopt -oq posix; then
+        if [ -f /usr/share/bash-completion/bash_completion ]; then
+          . /usr/share/bash-completion/bash_completion
+        elif [ -f /etc/bash_completion ]; then
+          . /etc/bash_completion
+        fi
+      fi
+
+      # ============================================================================
+      # User Aliases
+      # ============================================================================
+
+      # Alias definitions.
+      # You may want to put all your additions into a separate file like
+      # ~/.bash_aliases, instead of adding them here directly.
+      # See /usr/share/doc/bash-doc/examples in the bash-doc package.
+
+      if [ -f ~/.bash_aliases ]; then
+          . ~/.bash_aliases
+      fi
+
+      # ============================================================================
+      # Tool Initialization
+      # ============================================================================
+
+      # === NVM (Node Version Manager) ===
+      export NVM_DIR="$HOME/.nvm"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+      [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+      # === SDKMAN (Java/JVM Tool Manager) ===
+      #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+      export SDKMAN_DIR="$HOME/.sdkman"
+      [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+      # === Bun JavaScript Runtime ===
+      export BUN_INSTALL="$HOME/.bun"
+      export PATH="$BUN_INSTALL/bin:$PATH"
+
+      # ============================================================================
+      # Lazy-Loading Completions (improves shell startup time)
+      # ============================================================================
+
+      # kubectl completion - loads on first use
+      kubectl() {
+          if ! type __start_kubectl &>/dev/null; then
+              if command -v kubectl &>/dev/null; then
+                  source <(command kubectl completion bash 2>/dev/null)
+                  complete -o default -F __start_kubectl k
+              fi
+          fi
+          command kubectl "$@"
+      }
+
+      # helm completion - loads on first use
+      helm() {
+          if ! type __start_helm &>/dev/null; then
+              if [ -f /etc/bash_completion.d/helm ]; then
+                  source /etc/bash_completion.d/helm
+              elif command -v helm &>/dev/null; then
+                  source <(command helm completion bash 2>/dev/null)
+              fi
+          fi
+          command helm "$@"
+      }
+
+      # ============================================================================
+      # PATH Configuration (consolidated)
+      # ============================================================================
+
+      # Local binaries (Terraform, custom tools)
+      export PATH="$HOME/.local/bin:$PATH"
+
+      # ============================================================================
+      # Tool-Specific Configuration
+      # ============================================================================
+
+      # === Terraform ===
+      if command -v terraform &>/dev/null; then
+          complete -C "$(command -v terraform)" terraform
+      fi
+
+      # === kubectl Configuration ===
+      # Only set VS Code as kubectl editor if both tools are available
+      if command -v code &>/dev/null && command -v kubectl &>/dev/null; then
+          export KUBE_EDITOR="code --wait"
+      fi
+
+      # === Cargo (Rust) Environment ===
+      if [ -f "$HOME/.cargo/env" ]; then
+          . "$HOME/.cargo/env"
+      fi
+
+  # Custom .bash_aliases for devbox user
+  - path: /home/devbox/.bash_aliases
+    owner: devbox:devbox
+    permissions: '0644'
+    defer: true
+    content: |
+      # ~/.bash_aliases
+      # Custom aliases for enhanced productivity
+
+      # ============================================================================
+      # Navigation & Safety
+      # ============================================================================
+
+      # Directory navigation shortcuts
+      alias ..='cd ..'
+      alias ...='cd ../..'
+      alias ....='cd ../../..'
+      alias .....='cd ../../../..'
+      alias -- -='cd -'  # Go back to previous directory
+
+      # Safety aliases (interactive mode for destructive operations)
+      alias rm='rm -i'
+      alias cp='cp -i'
+      alias mv='mv -i'
+      alias ln='ln -i'
+
+      # Enhanced ls commands
+      alias l='ls -CF'
+      alias la='ls -A'
+      alias ll='ls -alF'
+      alias lh='ls -lh'
+      alias lt='ls -ltr'  # Sort by time, most recent last
+      alias lsize='ls -lhS'  # Sort by size
+
+      # ============================================================================
+      # Git Shortcuts
+      # ============================================================================
+
+      alias g='git'
+      alias gs='git status'
+      alias gss='git status -s'  # Short format
+      alias ga='git add'
+      alias gaa='git add --all'
+      alias gap='git add -p'  # Interactive staging
+      alias gc='git commit'
+      alias gcm='git commit -m'
+      alias gca='git commit --amend'
+      alias gcan='git commit --amend --no-edit'
+      alias gp='git push'
+      alias gpf='git push --force-with-lease'  # Safer force push
+      alias gl='git pull'
+      alias gf='git fetch'
+      alias gco='git checkout'
+      alias gcb='git checkout -b'
+      alias gb='git branch'
+      alias gba='git branch -a'
+      alias gbd='git branch -d'
+      alias gbD='git branch -D'
+      alias gd='git diff'
+      alias gds='git diff --staged'
+      alias glog='git log --oneline --graph --decorate'
+      alias gloga='git log --oneline --graph --decorate --all'
+      alias glogp='git log --pretty=format:"%h %ad | %s%d [%an]" --graph --date=short'
+      alias gstash='git stash'
+      alias gstashp='git stash pop'
+      alias gm='git merge'
+      alias gr='git rebase'
+      alias gri='git rebase -i'
+      alias grc='git rebase --continue'
+      alias gra='git rebase --abort'
+      alias greset='git reset'
+      alias gresethard='git reset --hard'
+      alias gclean='git clean -fd'
+      alias gshow='git show'
+      alias gtag='git tag'
+
+      # ============================================================================
+      # Podman Aliases
+      # ============================================================================
+
+      alias p='podman'
+      alias pps='podman ps'
+      alias ppsa='podman ps -a'
+      alias pimg='podman images'
+      alias pbuild='podman build'
+      alias prun='podman run'
+      alias prm='podman rm'
+      alias prmi='podman rmi'
+      alias pstop='podman stop'
+      alias pstart='podman start'
+      alias prestart='podman restart'
+      alias pexec='podman exec -it'
+      alias plog='podman logs'
+      alias plogf='podman logs -f'
+      alias pinspect='podman inspect'
+      alias ppull='podman pull'
+      alias ppush='podman push'
+      alias pprune='podman system prune -a'
+      alias pvolume='podman volume'
+      alias pnetwork='podman network'
+      alias ppod='podman pod'
+
+      # Podman compose aliases
+      alias pc='podman-compose'
+      alias pcup='podman-compose up -d'
+      alias pcdown='podman-compose down'
+      alias pclogs='podman-compose logs'
+      alias pclogsf='podman-compose logs -f'
+      alias pcrestart='podman-compose restart'
+      alias pcbuild='podman-compose build'
+
+      # ============================================================================
+      # Docker Aliases
+      # ============================================================================
+
+      alias d='docker'
+      alias dps='docker ps'
+      alias dpsa='docker ps -a'
+      alias dimg='docker images'
+      alias dbuild='docker build'
+      alias drun='docker run'
+      alias drm='docker rm'
+      alias drmi='docker rmi'
+      alias dstop='docker stop'
+      alias dstart='docker start'
+      alias drestart='docker restart'
+      alias dexec='docker exec -it'
+      alias dlog='docker logs'
+      alias dlogf='docker logs -f'
+      alias dinspect='docker inspect'
+      alias dpull='docker pull'
+      alias dpush='docker push'
+      alias dprune='docker system prune -a'
+      alias dvolume='docker volume'
+      alias dnetwork='docker network'
+
+      # Docker compose aliases
+      alias dc='docker-compose'
+      alias dcup='docker-compose up -d'
+      alias dcdown='docker-compose down'
+      alias dclogs='docker-compose logs'
+      alias dclogsf='docker-compose logs -f'
+      alias dcrestart='docker-compose restart'
+      alias dcbuild='docker-compose build'
+
+      # ============================================================================
+      # Kubernetes & kubectl Aliases
+      # ============================================================================
+
+      alias k='kubectl'
+      alias kgp='kubectl get pods'
+      alias kgpa='kubectl get pods --all-namespaces'
+      alias kgd='kubectl get deployments'
+      alias kgs='kubectl get services'
+      alias kgn='kubectl get nodes'
+      alias kgi='kubectl get ingress'
+      alias kgpvc='kubectl get pvc'
+      alias kgcm='kubectl get configmaps'
+      alias kgsec='kubectl get secrets'
+
+      alias kdesc='kubectl describe'
+      alias kdescp='kubectl describe pod'
+      alias kdescd='kubectl describe deployment'
+      alias kdescs='kubectl describe service'
+
+      alias klog='kubectl logs'
+      alias klogf='kubectl logs -f'
+      alias klogp='kubectl logs -p'  # Previous container
+
+      alias kexec='kubectl exec -it'
+      alias kpf='kubectl port-forward'
+      alias kdel='kubectl delete'
+      alias kapp='kubectl apply -f'
+      alias kedit='kubectl edit'
+
+      alias kctx='kubectl config current-context'
+      alias kns='kubectl config set-context --current --namespace'
+      alias kgetns='kubectl get namespaces'
+
+      # LaLiga Tech environment context switching
+      alias kdv='az aks get-credentials --resource-group dv-cm-neu-core-rg --name dv-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
+      alias kts='az aks get-credentials --resource-group ts-cm-neu-core-rg --name ts-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
+      alias kqa='az aks get-credentials --resource-group qa-cm-neu-core-rg --name qa-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
+      alias kat='az aks get-credentials --resource-group at-cm-neu-core-rg --name at-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
+
+      # Set default namespace to competitionmanager
+      alias kcm='kubectl config set-context --current --namespace=competitionmanager'
+
+      # ============================================================================
+      # Azure CLI Aliases
+      # ============================================================================
+
+      alias azlogin='az login --tenant e22b893a-f4e8-4053-a98b-c3862df710a8'
+      alias azaccount='az account show'
+      alias azlist='az account list --output table'
+      alias azsetdv='az account set --subscription a362ecfe-993f-4bc7-824b-2af7778a85e6'  # CM - DV
+      alias azrg='az group list --output table'
+      alias azaks='az aks list --output table'
+      alias aksget='az aks get-credentials'
+
+      # ============================================================================
+      # Terraform Aliases
+      # ============================================================================
+
+      alias tf='terraform'
+      alias tfinit='terraform init'
+      alias tfplan='terraform plan'
+      alias tfapply='terraform apply'
+      alias tfdestroy='terraform destroy'
+      alias tfvalidate='terraform validate'
+      alias tffmt='terraform fmt'
+      alias tfoutput='terraform output'
+      alias tfshow='terraform show'
+      alias tfstate='terraform state'
+      alias tfws='terraform workspace'
+      alias tfwslist='terraform workspace list'
+      alias tfwsselect='terraform workspace select'
+      alias tfwsnew='terraform workspace new'
+
+      # ============================================================================
+      # pnpm & Node.js Aliases
+      # ============================================================================
+
+      alias pn='pnpm'
+      alias pi='pnpm install'
+      alias pd='pnpm dev'
+      alias pb='pnpm build'
+      alias pt='pnpm test'
+      alias pl='pnpm lint'
+      alias plf='pnpm lint:fix'
+      alias pstart='pnpm start'
+      alias ppr='pnpm prettier:write'
+      alias pcheck='pnpm check-types'
+
+      # ============================================================================
+      # .NET Aliases
+      # ============================================================================
+
+      alias dn='dotnet'
+      alias dnb='dotnet build'
+      alias dnr='dotnet run'
+      alias dnt='dotnet test'
+      alias dnc='dotnet clean'
+      alias dnrestore='dotnet restore'
+      alias dnwatch='dotnet watch'
+      alias dnef='dotnet ef'
+
+      # ============================================================================
+      # System & Utilities
+      # ============================================================================
+
+      # Disk usage
+      alias df='df -h'
+      alias du='du -h'
+      alias dus='du -sh'
+
+      # Process management
+      alias psg='ps aux | grep -v grep | grep -i -e VSZ -e'
+      alias psgrep='ps aux | grep'
+
+      # Network
+      alias ports='netstat -tulanp'
+      alias myip='curl ifconfig.me'
+
+      # History
+      alias h='history'
+      alias hg='history | grep'
+
+      # Quick directory jumps
+      alias work='cd ~/Code/Work'
+      alias sportian='cd ~/Code/Work/Sportian'
+      alias cmbe='cd ~/Code/Work/Sportian/CM_BE'
+      alias cmfe='cd ~/Code/Work/Sportian/CM_FE'
+      alias cmcore='cd ~/Code/Work/Sportian/CM_FE_CORE'
+
+      # Reload bash config
+      alias reload='source ~/.bashrc'
+      alias editbash='code ~/.bashrc ~/.bash_aliases'
+
+      # Python development tools
+      alias coda-cli="~/codaenv/.venv/bin/coda-cli"
+
+      # ============================================================================
+      # Miscellaneous
+      # ============================================================================
+
+      # Make directory and cd into it
+      mkcd() {
+          mkdir -p "$1" && cd "$1"
+      }
+
+      # Extract compressed files
+      extract() {
+          if [ -f "$1" ]; then
+              case "$1" in
+                  *.tar.bz2)   tar xjf "$1"     ;;
+                  *.tar.gz)    tar xzf "$1"     ;;
+                  *.bz2)       bunzip2 "$1"     ;;
+                  *.rar)       unrar x "$1"     ;;
+                  *.gz)        gunzip "$1"      ;;
+                  *.tar)       tar xf "$1"      ;;
+                  *.tbz2)      tar xjf "$1"     ;;
+                  *.tgz)       tar xzf "$1"     ;;
+                  *.zip)       unzip "$1"       ;;
+                  *.Z)         uncompress "$1"  ;;
+                  *.7z)        7z x "$1"        ;;
+                  *)           echo "'$1' cannot be extracted via extract()" ;;
+              esac
+          else
+              echo "'$1' is not a valid file"
+          fi
+      }
+
+      # Find files by name
+      ff() {
+          find . -type f -iname "*$1*"
+      }
+
+      # Find directories by name
+      fdir() {
+          find . -type d -iname "*$1*"
+      }
+
+  # Git configuration - Personal
+  - path: /home/devbox/.gitconfig
+    owner: devbox:devbox
+    permissions: '0644'
+    defer: true
+    content: |
+      [user]
+          name = Securexai
+          email = github.com.valium091@passmail.com
+      [includeIf "gitdir/i:~/code/work/**"]
+          path = ~/code/work/.gitconfig
+      [core]
+          editor = code --wait
+          hooksPath = ~/.git-hooks
+          autocrlf = input
+      [init]
+          defaultBranch = main
+      [pull]
+          rebase = true
+      [fetch]
+          prune = true
+      [push]
+          default = current
+          autoSetupRemote = true
+      [alias]
+          st = status -sb
+          lg = log --graph --oneline --decorate --all
+
+  # Git configuration - Work
+  - path: /home/devbox/code/work/.gitconfig
+    owner: devbox:devbox
+    permissions: '0644'
+    defer: true
+    content: |
+      [user]
+          name = Sergio Tapia
+          email = s.tapia@globant.com
+
+  # Netplan configuration for bridge networking (commented template)
+  - path: /etc/netplan/60-bridge.yaml
+    permissions: '0644'
+    content: |
+      # Bridge Network Configuration
+      # Edit this file to enable bridge networking
+      #
+      # network:
+      #   version: 2
+      #   ethernets:
+      #     eth0:
+      #       dhcp4: false
+      #       dhcp6: false
+      #   bridges:
+      #     br0:
+      #       interfaces: [eth0]
+      #       dhcp4: true
+      #       # Or use static IP:
+      #       # addresses: [192.168.1.100/24]
+      #       # routes:
+      #       #   - to: default
+      #       #     via: 192.168.1.1
+      #       # nameservers:
+      #       #   addresses: [8.8.8.8, 8.8.4.4]
+      #
+      # After editing, apply with: sudo netplan apply
+
+# Commands to run after setup
+runcmd:
+  - mkdir -p /home/devbox/code/work
+  - chown -R devbox:devbox /home/devbox
+  - chmod 644 /home/devbox/.bashrc
+  - chmod 644 /home/devbox/.bash_aliases
+  - chmod 644 /home/devbox/.gitconfig
+  - chmod 644 /home/devbox/code/work/.gitconfig
+  - echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
+  - chown devbox:devbox /home/devbox/.setup-complete
+  - echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
+
+final_message: |
+  ✅ Ubuntu 25.10 DevBox setup complete!
+
+  Default user: devbox
+  Custom bash configuration installed with:
+  - Full .bashrc with history, completions, tool integrations
+  - Comprehensive .bash_aliases with Git, Docker, Kubernetes, Azure, Terraform shortcuts
+
+  Git dual-identity configuration:
+  - Personal: Securexai <github.com.valium091@passmail.com>
+  - Work: Sergio Tapia <s.tapia@globant.com> (auto-switches in ~/code/work/**)
+  - Directory structure: ~/code/work/ created
+
+  To enable bridge networking:
+    1. Edit /etc/netplan/60-bridge.yaml
+    2. Uncomment and configure the bridge section
+    3. Run: sudo netplan apply
+
+  Access your instance:
+    multipass shell devbox

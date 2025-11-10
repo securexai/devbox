@@ -1,0 +1,28 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor and IDE Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# Logs
+*.log
+
+# Temporary Files
+*.tmp
+*.temp
+
+# Environment Files (may contain secrets)
+.env
+.env.local
+
+# Multipass specific
+*.img
+*.qcow2
