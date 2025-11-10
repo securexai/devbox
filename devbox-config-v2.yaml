@@ -657,26 +657,81 @@ runcmd:
   - chmod 644 /home/devbox/.gitconfig
   - chmod 644 /home/devbox/code/work/.gitconfig
   - sysctl --system
-  - echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
+
+  # Remove snapd (minimal image - saves ~200MB RAM)
+  - systemctl disable snapd.service snapd.socket
+  - systemctl mask snapd.service
+  - apt-get purge -y snapd
+  - rm -rf /snap /var/snap /var/lib/snapd
+
+  # Create extended directory structure
+  - mkdir -p /home/devbox/code/personal
+  - mkdir -p /home/devbox/.local/bin
+  - mkdir -p /home/devbox/.kube
+  - mkdir -p /home/devbox/bin
+
+  # Generate SSH keys
+  # Work: RSA 4096-bit (corporate compatibility)
+  - su - devbox -c 'ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -C "s.tapia@globant.com" -N ""'
+  # Personal: ed25519 (modern, secure)
+  - su - devbox -c 'ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_personal -C "github.com.valium091@passmail.com" -N ""'
+  - chmod 600 /home/devbox/.ssh/id_rsa /home/devbox/.ssh/id_ed25519_personal
+  - chmod 644 /home/devbox/.ssh/id_rsa.pub /home/devbox/.ssh/id_ed25519_personal.pub
+
+  # Install Devbox (package manager for consistent dev environments)
+  - su - devbox -c 'curl -fsSL https://get.jetify.com/devbox | bash -s -- -f'
+
+  # Cleanup to reduce image size
+  - apt-get autoremove -y
+  - apt-get clean
+  - rm -rf /var/lib/apt/lists/*
+  - rm -rf /tmp/*
+
+  # Save SSH public keys and mark setup complete
+  - su - devbox -c 'echo "=== WORK SSH KEY (RSA 4096) ===" > ~/.setup-complete'
+  - su - devbox -c 'cat ~/.ssh/id_rsa.pub >> ~/.setup-complete'
+  - su - devbox -c 'echo "" >> ~/.setup-complete'
+  - su - devbox -c 'echo "=== PERSONAL SSH KEY (ed25519) ===" >> ~/.setup-complete'
+  - su - devbox -c 'cat ~/.ssh/id_ed25519_personal.pub >> ~/.setup-complete'
+  - su - devbox -c 'echo "" >> ~/.setup-complete'
+  - su - devbox -c 'date >> ~/.setup-complete'
   - chown devbox:devbox /home/devbox/.setup-complete
   - echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
 
 final_message: |
-  ✅ Ubuntu 25.10 DevBox setup complete!
+  ✅ Minimal Ubuntu 25.10 DevBox setup complete!
 
-  Default user: devbox
-  Custom bash configuration installed with:
-  - Full .bashrc with history, completions, tool integrations
-  - Comprehensive .bash_aliases with Git, Docker, Kubernetes, Azure, Terraform shortcuts
+  System Configuration:
+  - Minimal image: snapd removed (~200MB RAM saved)
+  - Kernel optimizations: Applied (swappiness=10, inotify=524288)
+  - User: devbox (with sudo access)
 
-  Git dual-identity configuration:
-  - Personal: Securexai <github.com.valium091@passmail.com>
-  - Work: Sergio Tapia <s.tapia@globant.com> (auto-switches in ~/code/work/**)
-  - Directory structure: ~/code/work/ created
+  Development Environment:
+  - ✅ Devbox installed (~/.local/bin/devbox)
+  - ✅ Custom bash configuration with aliases and completions
+  - ✅ Git dual-identity setup (work + personal)
 
-  To enable bridge networking:
+  SSH Keys Generated:
+  - Work: RSA 4096-bit (s.tapia@globant.com)
+  - Personal: ed25519 (github.com.valium091@passmail.com)
+  - Keys saved in ~/.setup-complete
+
+  Directory Structure:
+  - ~/code/work/ (auto-switches Git identity)
+  - ~/code/personal/
+  - ~/.local/bin/
+  - ~/.kube/
+
+  Next Steps:
+  1. View SSH keys: cat ~/.setup-complete
+  2. Clone project: git clone <repo>
+  3. Initialize Devbox: cd <project> && devbox init
+  4. Add tools: devbox add nodejs@20 rust@latest
+  5. Enter environment: devbox shell
+
+  Optional - Bridge Networking:
     1. Edit /etc/netplan/60-bridge.yaml
-    2. Uncomment and configure the bridge section
+    2. Uncomment and configure bridge section
     3. Run: sudo netplan apply
 
   Access your instance:
