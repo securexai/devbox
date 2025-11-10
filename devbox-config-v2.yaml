@@ -39,7 +39,6 @@ package_upgrade: true
 write_files:
   # System optimization
   - path: /etc/sysctl.d/99-devbox.conf
-    permissions: '0644'
     content: |
       vm.swappiness=10
       vm.vfs_cache_pressure=50
@@ -48,7 +47,6 @@ write_files:
   # Custom .bashrc for devbox user
   - path: /home/devbox/.bashrc
     owner: devbox:devbox
-    permissions: '0644'
     defer: true
     content: |
       # ~/.bashrc: executed by bash(1) for non-login shells.
@@ -267,7 +265,6 @@ write_files:
   # Custom .bash_aliases for devbox user
   - path: /home/devbox/.bash_aliases
     owner: devbox:devbox
-    permissions: '0644'
     defer: true
     content: |
       # ~/.bash_aliases
@@ -590,7 +587,6 @@ write_files:
   # Git configuration - Personal
   - path: /home/devbox/.gitconfig
     owner: devbox:devbox
-    permissions: '0644'
     defer: true
     content: |
       [user]
@@ -618,7 +614,6 @@ write_files:
   # Git configuration - Work
   - path: /home/devbox/code/work/.gitconfig
     owner: devbox:devbox
-    permissions: '0644'
     defer: true
     content: |
       [user]
@@ -627,7 +622,6 @@ write_files:
 
   # Netplan configuration for bridge networking (commented template)
   - path: /etc/netplan/60-bridge.yaml
-    permissions: '0644'
     content: |
       # Bridge Network Configuration
       # Edit this file to enable bridge networking
@@ -656,10 +650,13 @@ write_files:
 runcmd:
   - mkdir -p /home/devbox/code/work
   - chown -R devbox:devbox /home/devbox
+  - chmod 644 /etc/sysctl.d/99-devbox.conf
+  - chmod 644 /etc/netplan/60-bridge.yaml
   - chmod 644 /home/devbox/.bashrc
   - chmod 644 /home/devbox/.bash_aliases
   - chmod 644 /home/devbox/.gitconfig
   - chmod 644 /home/devbox/code/work/.gitconfig
+  - sysctl --system
   - echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
   - chown devbox:devbox /home/devbox/.setup-complete
   - echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
