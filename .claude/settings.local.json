@@ -26,7 +26,8 @@
       "Bash(multipass networks:*)",
       "Bash(multipass get:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
