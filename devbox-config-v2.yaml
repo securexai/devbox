@@ -557,19 +557,6 @@ write_files:
       alias pcheck='pnpm check-types'
 
       # ============================================================================
-      # .NET Aliases
-      # ============================================================================
-
-      alias dn='dotnet'
-      alias dnb='dotnet build'
-      alias dnr='dotnet run'
-      alias dnt='dotnet test'
-      alias dnc='dotnet clean'
-      alias dnrestore='dotnet restore'
-      alias dnwatch='dotnet watch'
-      alias dnef='dotnet ef'
-
-      # ============================================================================
       # System & Utilities
       # ============================================================================
 
