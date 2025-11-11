@@ -1,11 +1,43 @@
 #cloud-config
 # Ubuntu 25.10 - DevBox Configuration (devbox as default user)
+#
+# IMPORTANT: This is a TEMPLATE configuration with placeholder values.
+# Customize the following sections before use:
+#   - Git user configuration (lines ~619-650)
+#   - Organization-specific aliases (if needed)
+#
+# Git Configuration Options:
+#
+#   Option 1: Environment Variables (recommended for automation)
+#     multipass launch --name devbox --cloud-init devbox-config-v2.yaml \
+#       -e GIT_USER_NAME="Your Name" \
+#       -e GIT_USER_EMAIL="your@email.com" \
+#       -e GIT_WORK_NAME="Work Name" \
+#       -e GIT_WORK_EMAIL="work@company.com"
+#
+#   Option 2: Manual Edit
+#     Edit the git configuration sections below and replace placeholders:
+#       - CHANGEME / changeme@example.com (personal config)
+#       - CHANGEME / changeme@example.com (work config)
+#
+# Validation:
+#   cloud-init schema --config-file devbox-config-v2.yaml --annotate
+#
+# Testing:
+#   multipass launch --name test-devbox --cloud-init devbox-config-v2.yaml
+#   multipass exec test-devbox -- cloud-init status --wait
+#   multipass exec test-devbox -- cat /var/log/cloud-init.log
+#
+# Cleanup:
+#   multipass delete test-devbox && multipass purge
 
 hostname: devbox
 timezone: America/Bogota
-locale: es_CO.UTF-8
+locale: en_US.UTF-8
 
 # User configuration
+# SECURITY NOTE: NOPASSWD sudo is convenient for development but reduces security.
+# For production environments, remove NOPASSWD to require password authentication.
 users:
   - name: devbox
     gecos: DevBox User
@@ -14,40 +46,39 @@ users:
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     lock_passwd: false
 
-# Packages
-packages:
-  - build-essential
-  - ca-certificates
-  - curl
-  - gh
-  - git
-  - gnupg
-  - language-pack-es
-  - locales
-  - lsb-release
-  - nano
-  - openssh-client
-  - openssh-server
-  - software-properties-common
-  - unzip
-  - wget
-
-package_update: true
+# Package management
+# Cloud-init execution order: 1) update repos, 2) upgrade existing, 3) install new
+package_update: false
 package_upgrade: false
+
+packages:
+  - build-essential                  # Compilers and build tools (gcc, g++, make)
+  - ca-certificates                  # SSL/TLS certificate authorities for HTTPS
+  - curl                             # Command-line HTTP client for data transfer
+  - dnsutils                         # DNS debugging tools (dig, nslookup)
+  - gh                               # GitHub CLI for repository management
+  - git                              # Version control system
+  - gnupg                            # GPG encryption and signing tools
+  - htop                             # Enhanced process viewer
+  - jq                               # JSON processor for scripts
+  - language-pack-en                 # English language support for system locales
+  - locales                          # Locale data files for internationalization
+  - lsb-release                      # Linux Standard Base version reporting
+  - nano                             # Lightweight command-line text editor
+  - net-tools                        # Network utilities (ifconfig, netstat)
+  - openssh-client                   # SSH client for remote connections
+  - openssh-server                   # SSH server for remote access
+  - software-properties-common       # Scripts for managing software repositories
+  - tree                             # Directory visualization
+  - unzip                            # Extract files from ZIP archives
+  - vim                              # Alternative text editor
+  - wget                             # Non-interactive HTTP/FTP file downloader
 
 # Configuration files
 write_files:
-  # System optimization
-  - path: /etc/sysctl.d/99-devbox.conf
-    content: |
-      vm.swappiness=10
-      vm.vfs_cache_pressure=50
-      fs.inotify.max_user_watches=524288
-
   # Custom .bashrc for devbox user
   - path: /home/devbox/.bashrc
-    owner: devbox:devbox
-    defer: true
+    permissions: '0644'
     content: |
       # ~/.bashrc: executed by bash(1) for non-login shells.
       # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
@@ -194,15 +225,53 @@ write_files:
       # Tool Initialization
       # ============================================================================
 
-      # === NVM (Node Version Manager) ===
+      # === NVM (Node Version Manager) - Lazy Loading ===
+      # Lazy load NVM to improve shell startup time (saves ~200-500ms)
+      # NVM will be loaded on first use of nvm, node, npm, or npx commands
+      #
+      # IMPORTANT - Tab Completion Behavior:
+      # Tab completion for npm/npx will NOT work until you run one of these commands
+      # for the first time in your shell session. This is a trade-off for faster startup.
+      #
+      # Example workflow:
+      #   $ npm <TAB>        # ← Tab completion won't work yet
+      #   $ npm --version    # ← First use loads NVM
+      #   $ npm <TAB>        # ← Now tab completion works for rest of session
+      #
+      # After first use, completion works normally for all npm/npx commands.
+      # NVM and node tab completion work immediately as they load the completion system.
       export NVM_DIR="$HOME/.nvm"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-      [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-      # === SDKMAN (Java/JVM Tool Manager) ===
-      #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
-      export SDKMAN_DIR="$HOME/.sdkman"
-      [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+      # Define the NVM loader function once (DRY principle)
+      _load_nvm() {
+          unset -f nvm node npm npx _load_nvm
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+      }
+
+      # Lazy load wrappers - each command loads NVM on first use
+      nvm() { _load_nvm; nvm "$@"; }
+      node() { _load_nvm; node "$@"; }
+
+      npm() {
+        _load_nvm
+        if command -v npm &>/dev/null; then
+          npm "$@"
+        else
+          echo "npm not found. Install Node.js via 'nvm install node'" >&2
+          return 127
+        fi
+      }
+
+      npx() {
+        _load_nvm
+        if command -v npx &>/dev/null; then
+          npx "$@"
+        else
+          echo "npx not found. Install Node.js via 'nvm install node'" >&2
+          return 127
+        fi
+      }
 
       # === Bun JavaScript Runtime ===
       export BUN_INSTALL="$HOME/.bun"
@@ -212,27 +281,25 @@ write_files:
       # Lazy-Loading Completions (improves shell startup time)
       # ============================================================================
 
-      # kubectl completion - loads on first use
+      # kubectl completion - one-time load on first use
       kubectl() {
-          if ! type __start_kubectl &>/dev/null; then
-              if command -v kubectl &>/dev/null; then
-                  source <(command kubectl completion bash 2>/dev/null)
-                  complete -o default -F __start_kubectl k
-              fi
+          unset -f kubectl
+          if command -v kubectl &>/dev/null; then
+              source <(command kubectl completion bash 2>/dev/null)
+              complete -o default -F __start_kubectl k
           fi
-          command kubectl "$@"
+          kubectl "$@"
       }
 
-      # helm completion - loads on first use
+      # helm completion - one-time load on first use
       helm() {
-          if ! type __start_helm &>/dev/null; then
-              if [ -f /etc/bash_completion.d/helm ]; then
-                  source /etc/bash_completion.d/helm
-              elif command -v helm &>/dev/null; then
-                  source <(command helm completion bash 2>/dev/null)
-              fi
+          unset -f helm
+          if [ -f /etc/bash_completion.d/helm ]; then
+              source /etc/bash_completion.d/helm
+          elif command -v helm &>/dev/null; then
+              source <(command helm completion bash 2>/dev/null)
           fi
-          command helm "$@"
+          helm "$@"
       }
 
       # ============================================================================
@@ -264,8 +331,7 @@ write_files:
 
   # Custom .bash_aliases for devbox user
   - path: /home/devbox/.bash_aliases
-    owner: devbox:devbox
-    defer: true
+    permissions: '0644'
     content: |
       # ~/.bash_aliases
       # Custom aliases for enhanced productivity
@@ -440,26 +506,21 @@ write_files:
       alias kns='kubectl config set-context --current --namespace'
       alias kgetns='kubectl get namespaces'
 
-      # LaLiga Tech environment context switching
-      alias kdv='az aks get-credentials --resource-group dv-cm-neu-core-rg --name dv-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
-      alias kts='az aks get-credentials --resource-group ts-cm-neu-core-rg --name ts-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
-      alias kqa='az aks get-credentials --resource-group qa-cm-neu-core-rg --name qa-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
-      alias kat='az aks get-credentials --resource-group at-cm-neu-core-rg --name at-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
-
-      # Set default namespace to competitionmanager
-      alias kcm='kubectl config set-context --current --namespace=competitionmanager'
-
       # ============================================================================
       # Azure CLI Aliases
       # ============================================================================
 
-      alias azlogin='az login --tenant e22b893a-f4e8-4053-a98b-c3862df710a8'
+      alias azlogin='az login'
       alias azaccount='az account show'
       alias azlist='az account list --output table'
-      alias azsetdv='az account set --subscription a362ecfe-993f-4bc7-824b-2af7778a85e6'  # CM - DV
       alias azrg='az group list --output table'
       alias azaks='az aks list --output table'
       alias aksget='az aks get-credentials'
+
+      # Add organization-specific aliases here
+      # Example:
+      # alias azsetdev='az account set --subscription YOUR_SUBSCRIPTION_ID'
+      # alias kdev='az aks get-credentials --resource-group YOUR_RG --name YOUR_CLUSTER'
 
       # ============================================================================
       # Terraform Aliases
@@ -496,19 +557,6 @@ write_files:
       alias pcheck='pnpm check-types'
 
       # ============================================================================
-      # .NET Aliases
-      # ============================================================================
-
-      alias dn='dotnet'
-      alias dnb='dotnet build'
-      alias dnr='dotnet run'
-      alias dnt='dotnet test'
-      alias dnc='dotnet clean'
-      alias dnrestore='dotnet restore'
-      alias dnwatch='dotnet watch'
-      alias dnef='dotnet ef'
-
-      # ============================================================================
       # System & Utilities
       # ============================================================================
 
@@ -530,18 +578,13 @@ write_files:
       alias hg='history | grep'
 
       # Quick directory jumps
-      alias work='cd ~/Code/Work'
-      alias sportian='cd ~/Code/Work/Sportian'
-      alias cmbe='cd ~/Code/Work/Sportian/CM_BE'
-      alias cmfe='cd ~/Code/Work/Sportian/CM_FE'
-      alias cmcore='cd ~/Code/Work/Sportian/CM_FE_CORE'
+      # Add your project-specific shortcuts here
+      # Example:
+      # alias myproject='cd ~/code/myproject'
 
       # Reload bash config
       alias reload='source ~/.bashrc'
       alias editbash='code ~/.bashrc ~/.bash_aliases'
-
-      # Python development tools
-      alias coda-cli="~/codaenv/.venv/bin/coda-cli"
 
       # ============================================================================
       # Miscellaneous
@@ -584,14 +627,16 @@ write_files:
           find . -type d -iname "*$1*"
       }
 
-  # Git configuration - Personal
-  - path: /home/devbox/.gitconfig
-    owner: devbox:devbox
-    defer: true
+  # Git configuration - Personal (template)
+  # Note: This template will be processed by runcmd to support environment variables
+  # TEMPLATE: Replace YOUR_NAME and YOUR_EMAIL with your actual information
+  # OR: Pass via environment variables: GIT_USER_NAME and GIT_USER_EMAIL
+  - path: /home/devbox/.gitconfig.template
+    permissions: '0644'
     content: |
       [user]
-          name = Securexai
-          email = github.com.valium091@passmail.com
+          name = __GIT_USER_NAME__
+          email = __GIT_USER_EMAIL__
       [includeIf "gitdir/i:~/code/work/**"]
           path = ~/code/work/.gitconfig
       [core]
@@ -611,17 +656,20 @@ write_files:
           st = status -sb
           lg = log --graph --oneline --decorate --all
 
-  # Git configuration - Work
-  - path: /home/devbox/code/work/.gitconfig
-    owner: devbox:devbox
-    defer: true
+  # Git configuration - Work (template)
+  # Note: This template will be processed by runcmd to support environment variables
+  # TEMPLATE: Replace WORK_NAME and WORK_EMAIL with your work information
+  # OR: Pass via environment variables: GIT_WORK_NAME and GIT_WORK_EMAIL
+  - path: /tmp/gitconfig-work.template
+    permissions: '0644'
     content: |
       [user]
-          name = Sergio Tapia
-          email = s.tapia@globant.com
+          name = __GIT_WORK_NAME__
+          email = __GIT_WORK_EMAIL__
 
   # Netplan configuration for bridge networking (commented template)
   - path: /etc/netplan/60-bridge.yaml
+    permissions: '0644'
     content: |
       # Bridge Network Configuration
       # Edit this file to enable bridge networking
@@ -648,91 +696,146 @@ write_files:
 
 # Commands to run after setup
 runcmd:
-  - mkdir -p /home/devbox/code/work
-  - chown -R devbox:devbox /home/devbox
-  - chmod 644 /etc/sysctl.d/99-devbox.conf
-  - chmod 644 /etc/netplan/60-bridge.yaml
-  - chmod 644 /home/devbox/.bashrc
-  - chmod 644 /home/devbox/.bash_aliases
-  - chmod 644 /home/devbox/.gitconfig
-  - chmod 644 /home/devbox/code/work/.gitconfig
-  - sysctl --system
+  # Execute all setup commands in a single logged block with error handling
+  - |
+    {
+      set -euo pipefail
+      echo "=== DevBox Setup Started: $(date) ==="
 
-  # Remove snapd (minimal image - saves ~200MB RAM)
-  - systemctl disable snapd.service snapd.socket
-  - systemctl mask snapd.service
-  - apt-get purge -y snapd
-  - rm -rf /snap /var/snap /var/lib/snapd
+      # Create directory structure
+      echo "Creating directory structure..."
+      mkdir -p /home/devbox/code/work || {
+        echo "ERROR: Failed to create directory structure" >&2
+        exit 1
+      }
 
-  # Create extended directory structure
-  - mkdir -p /home/devbox/code/personal
-  - mkdir -p /home/devbox/.local/bin
-  - mkdir -p /home/devbox/.kube
-  - mkdir -p /home/devbox/bin
+      # Verify directory was created
+      if [ ! -d /home/devbox/code/work ]; then
+        echo "ERROR: Directory /home/devbox/code/work does not exist" >&2
+        exit 1
+      fi
 
-  # Generate SSH keys
-  # Work: RSA 4096-bit (corporate compatibility)
-  - su - devbox -c 'ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -C "s.tapia@globant.com" -N ""'
-  # Personal: ed25519 (modern, secure)
-  - su - devbox -c 'ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_personal -C "github.com.valium091@passmail.com" -N ""'
-  - chmod 600 /home/devbox/.ssh/id_rsa /home/devbox/.ssh/id_ed25519_personal
-  - chmod 644 /home/devbox/.ssh/id_rsa.pub /home/devbox/.ssh/id_ed25519_personal.pub
+      # Move work git config template to proper location
+      if [ -f /tmp/gitconfig-work.template ]; then
+        mv /tmp/gitconfig-work.template /home/devbox/code/work/.gitconfig.template || {
+          echo "ERROR: Failed to move work git config template" >&2
+          exit 1
+        }
+      fi
 
-  # Install Devbox (package manager for consistent dev environments)
-  - su - devbox -c 'curl -fsSL https://get.jetify.com/devbox | bash -s -- -f'
+      # Set ownership for all devbox files
+      echo "Setting file ownership..."
+      chown -R devbox:devbox /home/devbox || {
+        echo "ERROR: Failed to set ownership" >&2
+        exit 1
+      }
 
-  # Cleanup to reduce image size
-  - apt-get autoremove -y
-  - apt-get clean
-  - rm -rf /var/lib/apt/lists/*
-  - rm -rf /tmp/*
+      # Process git configuration templates with environment variables
+      echo "Processing git configuration templates..."
 
-  # Save SSH public keys and mark setup complete
-  - su - devbox -c 'echo "=== WORK SSH KEY (RSA 4096) ===" > ~/.setup-complete'
-  - su - devbox -c 'cat ~/.ssh/id_rsa.pub >> ~/.setup-complete'
-  - su - devbox -c 'echo "" >> ~/.setup-complete'
-  - su - devbox -c 'echo "=== PERSONAL SSH KEY (ed25519) ===" >> ~/.setup-complete'
-  - su - devbox -c 'cat ~/.ssh/id_ed25519_personal.pub >> ~/.setup-complete'
-  - su - devbox -c 'echo "" >> ~/.setup-complete'
-  - su - devbox -c 'date >> ~/.setup-complete'
-  - chown devbox:devbox /home/devbox/.setup-complete
-  - echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
+      # Set default values if environment variables are not provided
+      GIT_USER_NAME="${GIT_USER_NAME:-CHANGEME}"
+      GIT_USER_EMAIL="${GIT_USER_EMAIL:-changeme@example.com}"
+      GIT_WORK_NAME="${GIT_WORK_NAME:-CHANGEME}"
+      GIT_WORK_EMAIL="${GIT_WORK_EMAIL:-changeme@example.com}"
+
+      # Warn if using placeholders
+      if [ "$GIT_USER_NAME" = "CHANGEME" ] || [ "$GIT_USER_EMAIL" = "changeme@example.com" ]; then
+        echo "WARNING: Git personal config using placeholder values. Set GIT_USER_NAME and GIT_USER_EMAIL" >&2
+      fi
+
+      if [ "$GIT_WORK_NAME" = "CHANGEME" ] || [ "$GIT_WORK_EMAIL" = "changeme@example.com" ]; then
+        echo "WARNING: Git work config using placeholder values. Set GIT_WORK_NAME and GIT_WORK_EMAIL" >&2
+      fi
+
+      # Process personal git config
+      if [ -f /home/devbox/.gitconfig.template ]; then
+        awk -v name="$GIT_USER_NAME" -v email="$GIT_USER_EMAIL" \
+            '{gsub(/__GIT_USER_NAME__/, name); gsub(/__GIT_USER_EMAIL__/, email); print}' \
+            /home/devbox/.gitconfig.template > /home/devbox/.gitconfig
+
+        if [ -s /home/devbox/.gitconfig ]; then
+          chown devbox:devbox /home/devbox/.gitconfig
+          chmod 644 /home/devbox/.gitconfig
+          rm -f /home/devbox/.gitconfig.template
+          echo "Personal git config created with user: ${GIT_USER_NAME}"
+        else
+          echo "ERROR: Failed to create personal git config" >&2
+          exit 1
+        fi
+      else
+        echo "WARNING: Personal git config template not found" >&2
+      fi
+
+      # Process work git config
+      if [ -f /home/devbox/code/work/.gitconfig.template ]; then
+        awk -v name="$GIT_WORK_NAME" -v email="$GIT_WORK_EMAIL" \
+            '{gsub(/__GIT_WORK_NAME__/, name); gsub(/__GIT_WORK_EMAIL__/, email); print}' \
+            /home/devbox/code/work/.gitconfig.template > /home/devbox/code/work/.gitconfig
+
+        if [ -s /home/devbox/code/work/.gitconfig ]; then
+          chown devbox:devbox /home/devbox/code/work/.gitconfig
+          chmod 644 /home/devbox/code/work/.gitconfig
+          rm -f /home/devbox/code/work/.gitconfig.template
+          echo "Work git config created with user: ${GIT_WORK_NAME}"
+        else
+          echo "ERROR: Failed to create work git config" >&2
+          exit 1
+        fi
+      else
+        echo "WARNING: Work git config template not found" >&2
+      fi
+
+      # Add auto-switch to devbox user (idempotent)
+      echo "Configuring auto-switch to devbox user..."
+      if ! grep -q "DEVBOX_SWITCHED" /home/ubuntu/.bashrc 2>/dev/null; then
+        echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
+      fi
+
+      # Clean up package cache to reduce disk usage
+      echo "Cleaning package cache..."
+      apt-get clean || echo "WARNING: apt-get clean failed (non-critical)"
+      rm -rf /var/cache/apt/archives/* || echo "WARNING: Cache cleanup failed (non-critical)"
+
+      # Create completion marker (last step)
+      if [ ! -f /home/devbox/.setup-complete ]; then
+        echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
+        chown devbox:devbox /home/devbox/.setup-complete
+      fi
+
+      echo "=== DevBox Setup Completed Successfully: $(date) ==="
+    } 2>&1 | tee -a /var/log/devbox-setup.log
 
 final_message: |
-  ✅ Minimal Ubuntu 25.10 DevBox setup complete!
+  ✅ Ubuntu 25.10 DevBox setup complete!
 
-  System Configuration:
-  - Minimal image: snapd removed (~200MB RAM saved)
-  - Kernel optimizations: Applied (swappiness=10, inotify=524288)
-  - User: devbox (with sudo access)
+  Default user: devbox
+  Custom bash configuration installed with:
+  - Full .bashrc with history, completions, NVM lazy loading
+  - Comprehensive .bash_aliases with Git, Docker, Podman, Kubernetes, Azure, Terraform shortcuts
 
-  Development Environment:
-  - ✅ Devbox installed (~/.local/bin/devbox)
-  - ✅ Custom bash configuration with aliases and completions
-  - ✅ Git dual-identity setup (work + personal)
+  ⚠️  IMPORTANT: Customize your configuration
+  - Edit ~/.gitconfig to set your personal name and email
+  - Edit ~/code/work/.gitconfig to set your work identity
+  - Add organization-specific aliases in ~/.bash_aliases if needed
 
-  SSH Keys Generated:
-  - Work: RSA 4096-bit (s.tapia@globant.com)
-  - Personal: ed25519 (github.com.valium091@passmail.com)
-  - Keys saved in ~/.setup-complete
+  Git dual-identity structure:
+  - Personal git config: ~/.gitconfig
+  - Work git config: ~/code/work/.gitconfig (auto-switches in ~/code/work/**)
+  - Directory structure: ~/code/work/ created
 
-  Directory Structure:
-  - ~/code/work/ (auto-switches Git identity)
-  - ~/code/personal/
-  - ~/.local/bin/
-  - ~/.kube/
+  Performance optimizations:
+  - NVM lazy loading (faster shell startup)
+  - Package cache cleaned (reduced disk usage)
+  - Lazy-loaded kubectl/helm completions
 
-  Next Steps:
-  1. View SSH keys: cat ~/.setup-complete
-  2. Clone project: git clone <repo>
-  3. Initialize Devbox: cd <project> && devbox init
-  4. Add tools: devbox add nodejs@20 rust@latest
-  5. Enter environment: devbox shell
-
-  Optional - Bridge Networking:
+  To enable bridge networking:
     1. Edit /etc/netplan/60-bridge.yaml
-    2. Uncomment and configure bridge section
+    2. Uncomment and configure the bridge section
     3. Run: sudo netplan apply
 
   Access your instance:
     multipass shell devbox
+
+  View setup logs:
+    multipass exec devbox -- cat /var/log/devbox-setup.log
