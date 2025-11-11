@@ -32,8 +32,8 @@
 #   multipass delete test-devbox && multipass purge
 
 hostname: devbox
-timezone: America/Bogota
-locale: es_CO.UTF-8
+timezone: America/New_York
+locale: en_US.UTF-8
 
 # User configuration
 # SECURITY NOTE: NOPASSWD sudo is convenient for development but reduces security.
@@ -61,7 +61,7 @@ packages:
   - gnupg
   - htop              # Enhanced process viewer
   - jq                # JSON processor for scripts
-  - language-pack-es
+  - language-pack-en
   - locales
   - lsb-release
   - nano
