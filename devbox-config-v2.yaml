@@ -3,8 +3,22 @@
 #
 # IMPORTANT: This is a TEMPLATE configuration with placeholder values.
 # Customize the following sections before use:
-#   - Git user configuration (lines ~590-620)
+#   - Git user configuration (lines ~619-650)
 #   - Organization-specific aliases (if needed)
+#
+# Git Configuration Options:
+#
+#   Option 1: Environment Variables (recommended for automation)
+#     multipass launch --name devbox --cloud-init devbox-config-v2.yaml \
+#       -e GIT_USER_NAME="Your Name" \
+#       -e GIT_USER_EMAIL="your@email.com" \
+#       -e GIT_WORK_NAME="Work Name" \
+#       -e GIT_WORK_EMAIL="work@company.com"
+#
+#   Option 2: Manual Edit
+#     Edit the git configuration sections below and replace placeholders:
+#       - CHANGEME / changeme@example.com (personal config)
+#       - CHANGEME / changeme@example.com (work config)
 #
 # Validation:
 #   cloud-init schema --config-file devbox-config-v2.yaml --annotate
@@ -64,7 +78,6 @@ packages:
 write_files:
   # Custom .bashrc for devbox user
   - path: /home/devbox/.bashrc
-    owner: devbox:devbox
     permissions: '0644'
     content: |
       # ~/.bashrc: executed by bash(1) for non-login shells.
@@ -214,36 +227,50 @@ write_files:
 
       # === NVM (Node Version Manager) - Lazy Loading ===
       # Lazy load NVM to improve shell startup time (saves ~200-500ms)
-      # NVM will be loaded on first use of nvm, node, or npm commands
+      # NVM will be loaded on first use of nvm, node, npm, or npx commands
+      #
+      # IMPORTANT - Tab Completion Behavior:
+      # Tab completion for npm/npx will NOT work until you run one of these commands
+      # for the first time in your shell session. This is a trade-off for faster startup.
+      #
+      # Example workflow:
+      #   $ npm <TAB>        # ← Tab completion won't work yet
+      #   $ npm --version    # ← First use loads NVM
+      #   $ npm <TAB>        # ← Now tab completion works for rest of session
+      #
+      # After first use, completion works normally for all npm/npx commands.
+      # NVM and node tab completion work immediately as they load the completion system.
       export NVM_DIR="$HOME/.nvm"
 
-      # Lazy load NVM
-      nvm() {
-          unset -f nvm node npm npx
+      # Define the NVM loader function once (DRY principle)
+      _load_nvm() {
+          unset -f nvm node npm npx _load_nvm
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-          nvm "$@"
       }
 
-      # Lazy load node
-      node() {
-          unset -f nvm node npm npx
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          node "$@"
-      }
+      # Lazy load wrappers - each command loads NVM on first use
+      nvm() { _load_nvm; nvm "$@"; }
+      node() { _load_nvm; node "$@"; }
 
-      # Lazy load npm
       npm() {
-          unset -f nvm node npm npx
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        _load_nvm
+        if command -v npm &>/dev/null; then
           npm "$@"
+        else
+          echo "npm not found. Install Node.js via 'nvm install node'" >&2
+          return 127
+        fi
       }
 
-      # Lazy load npx
       npx() {
-          unset -f nvm node npm npx
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        _load_nvm
+        if command -v npx &>/dev/null; then
           npx "$@"
+        else
+          echo "npx not found. Install Node.js via 'nvm install node'" >&2
+          return 127
+        fi
       }
 
       # === Bun JavaScript Runtime ===
@@ -254,27 +281,25 @@ write_files:
       # Lazy-Loading Completions (improves shell startup time)
       # ============================================================================
 
-      # kubectl completion - loads on first use
+      # kubectl completion - one-time load on first use
       kubectl() {
-          if ! type __start_kubectl &>/dev/null; then
-              if command -v kubectl &>/dev/null; then
-                  source <(command kubectl completion bash 2>/dev/null)
-                  complete -o default -F __start_kubectl k
-              fi
+          unset -f kubectl
+          if command -v kubectl &>/dev/null; then
+              source <(command kubectl completion bash 2>/dev/null)
+              complete -o default -F __start_kubectl k
           fi
-          command kubectl "$@"
+          kubectl "$@"
       }
 
-      # helm completion - loads on first use
+      # helm completion - one-time load on first use
       helm() {
-          if ! type __start_helm &>/dev/null; then
-              if [ -f /etc/bash_completion.d/helm ]; then
-                  source /etc/bash_completion.d/helm
-              elif command -v helm &>/dev/null; then
-                  source <(command helm completion bash 2>/dev/null)
-              fi
+          unset -f helm
+          if [ -f /etc/bash_completion.d/helm ]; then
+              source /etc/bash_completion.d/helm
+          elif command -v helm &>/dev/null; then
+              source <(command helm completion bash 2>/dev/null)
           fi
-          command helm "$@"
+          helm "$@"
       }
 
       # ============================================================================
@@ -306,7 +331,6 @@ write_files:
 
   # Custom .bash_aliases for devbox user
   - path: /home/devbox/.bash_aliases
-    owner: devbox:devbox
     permissions: '0644'
     content: |
       # ~/.bash_aliases
@@ -616,15 +640,16 @@ write_files:
           find . -type d -iname "*$1*"
       }
 
-  # Git configuration - Personal
+  # Git configuration - Personal (template)
+  # Note: This template will be processed by runcmd to support environment variables
   # TEMPLATE: Replace YOUR_NAME and YOUR_EMAIL with your actual information
-  - path: /home/devbox/.gitconfig
-    owner: devbox:devbox
+  # OR: Pass via environment variables: GIT_USER_NAME and GIT_USER_EMAIL
+  - path: /home/devbox/.gitconfig.template
     permissions: '0644'
     content: |
       [user]
-          name = YOUR_NAME
-          email = YOUR_EMAIL
+          name = __GIT_USER_NAME__
+          email = __GIT_USER_EMAIL__
       [includeIf "gitdir/i:~/code/work/**"]
           path = ~/code/work/.gitconfig
       [core]
@@ -644,15 +669,16 @@ write_files:
           st = status -sb
           lg = log --graph --oneline --decorate --all
 
-  # Git configuration - Work
+  # Git configuration - Work (template)
+  # Note: This template will be processed by runcmd to support environment variables
   # TEMPLATE: Replace WORK_NAME and WORK_EMAIL with your work information
-  - path: /home/devbox/code/work/.gitconfig
-    owner: devbox:devbox
+  # OR: Pass via environment variables: GIT_WORK_NAME and GIT_WORK_EMAIL
+  - path: /tmp/gitconfig-work.template
     permissions: '0644'
     content: |
       [user]
-          name = WORK_NAME
-          email = WORK_EMAIL
+          name = __GIT_WORK_NAME__
+          email = __GIT_WORK_EMAIL__
 
   # Netplan configuration for bridge networking (commented template)
   - path: /etc/netplan/60-bridge.yaml
@@ -702,12 +728,76 @@ runcmd:
         exit 1
       fi
 
+      # Move work git config template to proper location
+      if [ -f /tmp/gitconfig-work.template ]; then
+        mv /tmp/gitconfig-work.template /home/devbox/code/work/.gitconfig.template || {
+          echo "ERROR: Failed to move work git config template" >&2
+          exit 1
+        }
+      fi
+
       # Set ownership for all devbox files
       echo "Setting file ownership..."
       chown -R devbox:devbox /home/devbox || {
         echo "ERROR: Failed to set ownership" >&2
         exit 1
       }
+
+      # Process git configuration templates with environment variables
+      echo "Processing git configuration templates..."
+
+      # Set default values if environment variables are not provided
+      GIT_USER_NAME="${GIT_USER_NAME:-CHANGEME}"
+      GIT_USER_EMAIL="${GIT_USER_EMAIL:-changeme@example.com}"
+      GIT_WORK_NAME="${GIT_WORK_NAME:-CHANGEME}"
+      GIT_WORK_EMAIL="${GIT_WORK_EMAIL:-changeme@example.com}"
+
+      # Warn if using placeholders
+      if [ "$GIT_USER_NAME" = "CHANGEME" ] || [ "$GIT_USER_EMAIL" = "changeme@example.com" ]; then
+        echo "WARNING: Git personal config using placeholder values. Set GIT_USER_NAME and GIT_USER_EMAIL" >&2
+      fi
+
+      if [ "$GIT_WORK_NAME" = "CHANGEME" ] || [ "$GIT_WORK_EMAIL" = "changeme@example.com" ]; then
+        echo "WARNING: Git work config using placeholder values. Set GIT_WORK_NAME and GIT_WORK_EMAIL" >&2
+      fi
+
+      # Process personal git config
+      if [ -f /home/devbox/.gitconfig.template ]; then
+        awk -v name="$GIT_USER_NAME" -v email="$GIT_USER_EMAIL" \
+            '{gsub(/__GIT_USER_NAME__/, name); gsub(/__GIT_USER_EMAIL__/, email); print}' \
+            /home/devbox/.gitconfig.template > /home/devbox/.gitconfig
+
+        if [ -s /home/devbox/.gitconfig ]; then
+          chown devbox:devbox /home/devbox/.gitconfig
+          chmod 644 /home/devbox/.gitconfig
+          rm -f /home/devbox/.gitconfig.template
+          echo "Personal git config created with user: ${GIT_USER_NAME}"
+        else
+          echo "ERROR: Failed to create personal git config" >&2
+          exit 1
+        fi
+      else
+        echo "WARNING: Personal git config template not found" >&2
+      fi
+
+      # Process work git config
+      if [ -f /home/devbox/code/work/.gitconfig.template ]; then
+        awk -v name="$GIT_WORK_NAME" -v email="$GIT_WORK_EMAIL" \
+            '{gsub(/__GIT_WORK_NAME__/, name); gsub(/__GIT_WORK_EMAIL__/, email); print}' \
+            /home/devbox/code/work/.gitconfig.template > /home/devbox/code/work/.gitconfig
+
+        if [ -s /home/devbox/code/work/.gitconfig ]; then
+          chown devbox:devbox /home/devbox/code/work/.gitconfig
+          chmod 644 /home/devbox/code/work/.gitconfig
+          rm -f /home/devbox/code/work/.gitconfig.template
+          echo "Work git config created with user: ${GIT_WORK_NAME}"
+        else
+          echo "ERROR: Failed to create work git config" >&2
+          exit 1
+        fi
+      else
+        echo "WARNING: Work git config template not found" >&2
+      fi
 
       # Add auto-switch to devbox user (idempotent)
       echo "Configuring auto-switch to devbox user..."
