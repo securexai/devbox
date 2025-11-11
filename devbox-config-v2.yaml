@@ -1,11 +1,29 @@
 #cloud-config
 # Ubuntu 25.10 - DevBox Configuration (devbox as default user)
+#
+# IMPORTANT: This is a TEMPLATE configuration with placeholder values.
+# Customize the following sections before use:
+#   - Git user configuration (lines ~590-620)
+#   - Organization-specific aliases (if needed)
+#
+# Validation:
+#   cloud-init schema --config-file devbox-config-v2.yaml --annotate
+#
+# Testing:
+#   multipass launch --name test-devbox --cloud-init devbox-config-v2.yaml
+#   multipass exec test-devbox -- cloud-init status --wait
+#   multipass exec test-devbox -- cat /var/log/cloud-init.log
+#
+# Cleanup:
+#   multipass delete test-devbox && multipass purge
 
 hostname: devbox
 timezone: America/Bogota
 locale: es_CO.UTF-8
 
 # User configuration
+# SECURITY NOTE: NOPASSWD sudo is convenient for development but reduces security.
+# For production environments, remove NOPASSWD to require password authentication.
 users:
   - name: devbox
     gecos: DevBox User
@@ -14,26 +32,33 @@ users:
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     lock_passwd: false
 
-# Packages
+# Package management
+# Cloud-init execution order: 1) update repos, 2) upgrade existing, 3) install new
+package_update: true
+package_upgrade: true
+
 packages:
   - build-essential
   - ca-certificates
   - curl
+  - dnsutils          # DNS debugging tools (dig, nslookup)
   - gh
   - git
   - gnupg
+  - htop              # Enhanced process viewer
+  - jq                # JSON processor for scripts
   - language-pack-es
   - locales
   - lsb-release
   - nano
+  - net-tools         # Network utilities (ifconfig, netstat)
   - openssh-client
   - openssh-server
   - software-properties-common
+  - tree              # Directory visualization
   - unzip
+  - vim               # Alternative text editor
   - wget
-
-package_update: true
-package_upgrade: true
 
 # Configuration files
 write_files:
@@ -188,10 +213,39 @@ write_files:
       # Tool Initialization
       # ============================================================================
 
-      # === NVM (Node Version Manager) ===
+      # === NVM (Node Version Manager) - Lazy Loading ===
+      # Lazy load NVM to improve shell startup time (saves ~200-500ms)
+      # NVM will be loaded on first use of nvm, node, or npm commands
       export NVM_DIR="$HOME/.nvm"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-      [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+      # Lazy load NVM
+      nvm() {
+          unset -f nvm node npm npx
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+          nvm "$@"
+      }
+
+      # Lazy load node
+      node() {
+          unset -f nvm node npm npx
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          node "$@"
+      }
+
+      # Lazy load npm
+      npm() {
+          unset -f nvm node npm npx
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          npm "$@"
+      }
+
+      # Lazy load npx
+      npx() {
+          unset -f nvm node npm npx
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          npx "$@"
+      }
 
       # === Bun JavaScript Runtime ===
       export BUN_INSTALL="$HOME/.bun"
@@ -430,26 +484,21 @@ write_files:
       alias kns='kubectl config set-context --current --namespace'
       alias kgetns='kubectl get namespaces'
 
-      # LaLiga Tech environment context switching
-      alias kdv='az aks get-credentials --resource-group dv-cm-neu-core-rg --name dv-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
-      alias kts='az aks get-credentials --resource-group ts-cm-neu-core-rg --name ts-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
-      alias kqa='az aks get-credentials --resource-group qa-cm-neu-core-rg --name qa-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
-      alias kat='az aks get-credentials --resource-group at-cm-neu-core-rg --name at-cm-neu-core-aks --overwrite-existing && kubelogin convert-kubeconfig -l azurecli'
-
-      # Set default namespace to competitionmanager
-      alias kcm='kubectl config set-context --current --namespace=competitionmanager'
-
       # ============================================================================
       # Azure CLI Aliases
       # ============================================================================
 
-      alias azlogin='az login --tenant e22b893a-f4e8-4053-a98b-c3862df710a8'
+      alias azlogin='az login'
       alias azaccount='az account show'
       alias azlist='az account list --output table'
-      alias azsetdv='az account set --subscription a362ecfe-993f-4bc7-824b-2af7778a85e6'  # CM - DV
       alias azrg='az group list --output table'
       alias azaks='az aks list --output table'
       alias aksget='az aks get-credentials'
+
+      # Add organization-specific aliases here
+      # Example:
+      # alias azsetdev='az account set --subscription YOUR_SUBSCRIPTION_ID'
+      # alias kdev='az aks get-credentials --resource-group YOUR_RG --name YOUR_CLUSTER'
 
       # ============================================================================
       # Terraform Aliases
@@ -520,18 +569,13 @@ write_files:
       alias hg='history | grep'
 
       # Quick directory jumps
-      alias work='cd ~/Code/Work'
-      alias sportian='cd ~/Code/Work/Sportian'
-      alias cmbe='cd ~/Code/Work/Sportian/CM_BE'
-      alias cmfe='cd ~/Code/Work/Sportian/CM_FE'
-      alias cmcore='cd ~/Code/Work/Sportian/CM_FE_CORE'
+      # Add your project-specific shortcuts here
+      # Example:
+      # alias myproject='cd ~/code/myproject'
 
       # Reload bash config
       alias reload='source ~/.bashrc'
       alias editbash='code ~/.bashrc ~/.bash_aliases'
-
-      # Python development tools
-      alias coda-cli="~/codaenv/.venv/bin/coda-cli"
 
       # ============================================================================
       # Miscellaneous
@@ -575,14 +619,15 @@ write_files:
       }
 
   # Git configuration - Personal
+  # TEMPLATE: Replace YOUR_NAME and YOUR_EMAIL with your actual information
   - path: /home/devbox/.gitconfig
     owner: devbox:devbox
     permissions: '0644'
     defer: true
     content: |
       [user]
-          name = Securexai
-          email = github.com.valium091@passmail.com
+          name = YOUR_NAME
+          email = YOUR_EMAIL
       [includeIf "gitdir/i:~/code/work/**"]
           path = ~/code/work/.gitconfig
       [core]
@@ -603,14 +648,15 @@ write_files:
           lg = log --graph --oneline --decorate --all
 
   # Git configuration - Work
+  # TEMPLATE: Replace WORK_NAME and WORK_EMAIL with your work information
   - path: /home/devbox/code/work/.gitconfig
     owner: devbox:devbox
     permissions: '0644'
     defer: true
     content: |
       [user]
-          name = Sergio Tapia
-          email = s.tapia@globant.com
+          name = WORK_NAME
+          email = WORK_EMAIL
 
   # Netplan configuration for bridge networking (commented template)
   - path: /etc/netplan/60-bridge.yaml
@@ -641,28 +687,53 @@ write_files:
 
 # Commands to run after setup
 runcmd:
+  # Setup logging for debugging
+  - |
+    exec 1> >(tee -a /var/log/devbox-setup.log)
+    exec 2>&1
+    echo "=== DevBox Setup Started: $(date) ==="
+  # Create directory structure
   - mkdir -p /home/devbox/code/work
+  # Set ownership (write_files already sets permissions)
   - chown -R devbox:devbox /home/devbox
-  - chmod 644 /home/devbox/.bashrc
-  - chmod 644 /home/devbox/.bash_aliases
-  - chmod 644 /home/devbox/.gitconfig
-  - chmod 644 /home/devbox/code/work/.gitconfig
-  - echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
-  - chown devbox:devbox /home/devbox/.setup-complete
-  - echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
+  # Create idempotent completion marker
+  - |
+    if [ ! -f /home/devbox/.setup-complete ]; then
+      echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
+      chown devbox:devbox /home/devbox/.setup-complete
+    fi
+  # Add auto-switch to devbox user (idempotent check)
+  - |
+    if ! grep -q "DEVBOX_SWITCHED" /home/ubuntu/.bashrc 2>/dev/null; then
+      echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
+    fi
+  # Clean up package cache to reduce disk usage
+  - apt-get clean
+  - rm -rf /var/lib/apt/lists/*
+  - echo "=== DevBox Setup Completed: $(date) ==="
 
 final_message: |
   ✅ Ubuntu 25.10 DevBox setup complete!
 
   Default user: devbox
   Custom bash configuration installed with:
-  - Full .bashrc with history, completions, tool integrations
-  - Comprehensive .bash_aliases with Git, Docker, Kubernetes, Azure, Terraform shortcuts
+  - Full .bashrc with history, completions, NVM lazy loading
+  - Comprehensive .bash_aliases with Git, Docker, Podman, Kubernetes, Azure, Terraform shortcuts
 
-  Git dual-identity configuration:
-  - Personal: Securexai <github.com.valium091@passmail.com>
-  - Work: Sergio Tapia <s.tapia@globant.com> (auto-switches in ~/code/work/**)
+  ⚠️  IMPORTANT: Customize your configuration
+  - Edit ~/.gitconfig to set your personal name and email
+  - Edit ~/code/work/.gitconfig to set your work identity
+  - Add organization-specific aliases in ~/.bash_aliases if needed
+
+  Git dual-identity structure:
+  - Personal git config: ~/.gitconfig
+  - Work git config: ~/code/work/.gitconfig (auto-switches in ~/code/work/**)
   - Directory structure: ~/code/work/ created
+
+  Performance optimizations:
+  - NVM lazy loading (faster shell startup)
+  - Package cache cleaned (reduced disk usage)
+  - Lazy-loaded kubectl/helm completions
 
   To enable bridge networking:
     1. Edit /etc/netplan/60-bridge.yaml
@@ -671,3 +742,6 @@ final_message: |
 
   Access your instance:
     multipass shell devbox
+
+  View setup logs:
+    multipass exec devbox -- cat /var/log/devbox-setup.log
