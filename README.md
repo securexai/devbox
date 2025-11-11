@@ -114,6 +114,8 @@ snap install multipass
 
 ### 1. Launch VM
 
+#### On macOS/Linux
+
 ```bash
 multipass launch \
   --name devbox \
@@ -124,11 +126,25 @@ multipass launch \
   25.10
 ```
 
+#### On Windows PowerShell
+
+```powershell
+multipass launch --name devbox --memory 2G --disk 20G --cpus 2 --cloud-init devbox-config-v2.yaml 25.10
+```
+
 **Note**: Replace `25.10` with your desired Ubuntu version if needed.
 
 ### 2. Access VM
 
+#### On macOS/Linux
+
 ```bash
+multipass shell devbox
+```
+
+#### On Windows PowerShell
+
+```powershell
 multipass shell devbox
 ```
 
@@ -694,6 +710,41 @@ sysctl vm.vfs_cache_pressure
 ```
 
 ## Multipass Commands Reference
+
+### Running on Windows PowerShell
+
+To run Multipass commands from PowerShell, wrap them in `powershell.exe -Command`:
+
+```powershell
+# List all VMs
+powershell.exe -Command "multipass list"
+
+# Launch VM
+powershell.exe -Command "multipass launch --name devbox --memory 2G --disk 20G --cpus 2 --cloud-init devbox-config-v2.yaml 25.10"
+
+# Access VM
+powershell.exe -Command "multipass shell devbox"
+
+# Execute command in VM
+powershell.exe -Command "multipass exec devbox -- ls -la"
+
+# Transfer file to VM
+powershell.exe -Command "multipass transfer C:\path\to\file devbox:/home/devbox/"
+
+# View logs
+powershell.exe -Command "multipass exec devbox -- cat /var/log/cloud-init-output.log"
+```
+
+**Tip**: If running these frequently, create a PowerShell function in your `$PROFILE`:
+
+```powershell
+# Add to $PROFILE (typically C:\Users\<username>\Documents\PowerShell\profile.ps1)
+function mp {
+    powershell.exe -Command "multipass $args"
+}
+
+# Then use: mp list, mp shell devbox, mp exec devbox -- ls -la
+```
 
 ### VM Management
 
