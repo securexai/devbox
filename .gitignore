@@ -5,12 +5,17 @@ desktop.ini
 
 # Editor and IDE Files
 .vscode/
+.vscode-server/
 .idea/
 *.swp
 *.swo
 *~
 .project
 .settings/
+
+# VS Code Remote SSH
+.vscode-remote/
+*.code-workspace
 
 # Logs
 *.log

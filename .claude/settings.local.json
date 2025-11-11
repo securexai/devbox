@@ -27,9 +27,7 @@
       "Bash(multipass get:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(powershell.exe -Command \"multipass exec devbox -- which devbox\")",
-      "Bash(powershell.exe -Command \"multipass exec devbox -- devbox version\")",
-      "Bash(powershell.exe -Command \"multipass exec devbox -- ls -la ~/.local/bin/devbox\")"
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
