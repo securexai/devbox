@@ -66,7 +66,6 @@ write_files:
   - path: /home/devbox/.bashrc
     owner: devbox:devbox
     permissions: '0644'
-    defer: true
     content: |
       # ~/.bashrc: executed by bash(1) for non-login shells.
       # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
@@ -309,7 +308,6 @@ write_files:
   - path: /home/devbox/.bash_aliases
     owner: devbox:devbox
     permissions: '0644'
-    defer: true
     content: |
       # ~/.bash_aliases
       # Custom aliases for enhanced productivity
@@ -623,7 +621,6 @@ write_files:
   - path: /home/devbox/.gitconfig
     owner: devbox:devbox
     permissions: '0644'
-    defer: true
     content: |
       [user]
           name = YOUR_NAME
@@ -652,7 +649,6 @@ write_files:
   - path: /home/devbox/code/work/.gitconfig
     owner: devbox:devbox
     permissions: '0644'
-    defer: true
     content: |
       [user]
           name = WORK_NAME
@@ -687,30 +683,51 @@ write_files:
 
 # Commands to run after setup
 runcmd:
-  # Setup logging for debugging
+  # Execute all setup commands in a single logged block with error handling
   - |
-    exec 1> >(tee -a /var/log/devbox-setup.log)
-    exec 2>&1
-    echo "=== DevBox Setup Started: $(date) ==="
-  # Create directory structure
-  - mkdir -p /home/devbox/code/work
-  # Set ownership (write_files already sets permissions)
-  - chown -R devbox:devbox /home/devbox
-  # Create idempotent completion marker
-  - |
-    if [ ! -f /home/devbox/.setup-complete ]; then
-      echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
-      chown devbox:devbox /home/devbox/.setup-complete
-    fi
-  # Add auto-switch to devbox user (idempotent check)
-  - |
-    if ! grep -q "DEVBOX_SWITCHED" /home/ubuntu/.bashrc 2>/dev/null; then
-      echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
-    fi
-  # Clean up package cache to reduce disk usage
-  - apt-get clean
-  - rm -rf /var/lib/apt/lists/*
-  - echo "=== DevBox Setup Completed: $(date) ==="
+    {
+      set -euo pipefail
+      echo "=== DevBox Setup Started: $(date) ==="
+
+      # Create directory structure
+      echo "Creating directory structure..."
+      mkdir -p /home/devbox/code/work || {
+        echo "ERROR: Failed to create directory structure" >&2
+        exit 1
+      }
+
+      # Verify directory was created
+      if [ ! -d /home/devbox/code/work ]; then
+        echo "ERROR: Directory /home/devbox/code/work does not exist" >&2
+        exit 1
+      fi
+
+      # Set ownership for all devbox files
+      echo "Setting file ownership..."
+      chown -R devbox:devbox /home/devbox || {
+        echo "ERROR: Failed to set ownership" >&2
+        exit 1
+      }
+
+      # Add auto-switch to devbox user (idempotent)
+      echo "Configuring auto-switch to devbox user..."
+      if ! grep -q "DEVBOX_SWITCHED" /home/ubuntu/.bashrc 2>/dev/null; then
+        echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
+      fi
+
+      # Clean up package cache to reduce disk usage
+      echo "Cleaning package cache..."
+      apt-get clean || echo "WARNING: apt-get clean failed (non-critical)"
+      rm -rf /var/cache/apt/archives/* || echo "WARNING: Cache cleanup failed (non-critical)"
+
+      # Create completion marker (last step)
+      if [ ! -f /home/devbox/.setup-complete ]; then
+        echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
+        chown devbox:devbox /home/devbox/.setup-complete
+      fi
+
+      echo "=== DevBox Setup Completed Successfully: $(date) ==="
+    } 2>&1 | tee -a /var/log/devbox-setup.log
 
 final_message: |
   ✅ Ubuntu 25.10 DevBox setup complete!
