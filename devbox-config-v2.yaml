@@ -704,14 +704,18 @@ runcmd:
 
       # Create directory structure
       echo "Creating directory structure..."
-      mkdir -p /home/devbox/code/work || {
+      mkdir -p /home/devbox/code/work /home/devbox/code/personal || {
         echo "ERROR: Failed to create directory structure" >&2
         exit 1
       }
 
-      # Verify directory was created
+      # Verify directories were created
       if [ ! -d /home/devbox/code/work ]; then
         echo "ERROR: Directory /home/devbox/code/work does not exist" >&2
+        exit 1
+      fi
+      if [ ! -d /home/devbox/code/personal ]; then
+        echo "ERROR: Directory /home/devbox/code/personal does not exist" >&2
         exit 1
       fi
 
