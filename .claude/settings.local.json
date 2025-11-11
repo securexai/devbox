@@ -27,7 +27,20 @@
       "Bash(multipass get:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx markdownlint-cli2:*)",
+      "Bash(echo:*)",
+      "Bash(cloud-init schema:*)",
+      "Bash(npx js-yaml:*)",
+      "Bash(/dev/null)",
+      "Bash(python -c \"import yaml; yaml.safe_load(open(r''C:\\Users\\s.tapia\\Downloads\\multipass\\devbox-config-v2.yaml''))\")",
+      "Bash(python -c \"import yaml; yaml.safe_load(open(''C:\\Users\\s.tapia\\Downloads\\multipass\\devbox-config-v2.yaml''))\")",
+      "Bash(where:*)",
+      "Bash(for i in {1..30})",
+      "Bash(do sleep 10)",
+      "Bash(break)",
+      "Bash(done)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
