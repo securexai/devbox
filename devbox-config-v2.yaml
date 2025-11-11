@@ -32,7 +32,7 @@
 #   multipass delete test-devbox && multipass purge
 
 hostname: devbox
-timezone: America/New_York
+timezone: America/Bogota
 locale: en_US.UTF-8
 
 # User configuration
@@ -48,31 +48,31 @@ users:
 
 # Package management
 # Cloud-init execution order: 1) update repos, 2) upgrade existing, 3) install new
-package_update: true
-package_upgrade: true
+package_update: false
+package_upgrade: false
 
 packages:
-  - build-essential
-  - ca-certificates
-  - curl
-  - dnsutils          # DNS debugging tools (dig, nslookup)
-  - gh
-  - git
-  - gnupg
-  - htop              # Enhanced process viewer
-  - jq                # JSON processor for scripts
-  - language-pack-en
-  - locales
-  - lsb-release
-  - nano
-  - net-tools         # Network utilities (ifconfig, netstat)
-  - openssh-client
-  - openssh-server
-  - software-properties-common
-  - tree              # Directory visualization
-  - unzip
-  - vim               # Alternative text editor
-  - wget
+  - build-essential                  # Compilers and build tools (gcc, g++, make)
+  - ca-certificates                  # SSL/TLS certificate authorities for HTTPS
+  - curl                             # Command-line HTTP client for data transfer
+  - dnsutils                         # DNS debugging tools (dig, nslookup)
+  - gh                               # GitHub CLI for repository management
+  - git                              # Version control system
+  - gnupg                            # GPG encryption and signing tools
+  - htop                             # Enhanced process viewer
+  - jq                               # JSON processor for scripts
+  - language-pack-en                 # English language support for system locales
+  - locales                          # Locale data files for internationalization
+  - lsb-release                      # Linux Standard Base version reporting
+  - nano                             # Lightweight command-line text editor
+  - net-tools                        # Network utilities (ifconfig, netstat)
+  - openssh-client                   # SSH client for remote connections
+  - openssh-server                   # SSH server for remote access
+  - software-properties-common       # Scripts for managing software repositories
+  - tree                             # Directory visualization
+  - unzip                            # Extract files from ZIP archives
+  - vim                              # Alternative text editor
+  - wget                             # Non-interactive HTTP/FTP file downloader
 
 # Configuration files
 write_files:
