@@ -31,5 +31,6 @@ desktop.ini
 # Multipass specific
 *.img
 *.qcow2
-.claude/settings.local.json
+
+# Claude local settings (user-specific)
 .claude/settings.local.json
