@@ -704,31 +704,15 @@ runcmd:
 
       # Create directory structure
       echo "Creating directory structure..."
-      mkdir -p /home/devbox/code/work || {
-        echo "ERROR: Failed to create directory structure" >&2
-        exit 1
-      }
-
-      # Verify directory was created
-      if [ ! -d /home/devbox/code/work ]; then
-        echo "ERROR: Directory /home/devbox/code/work does not exist" >&2
-        exit 1
-      fi
+      mkdir -p /home/devbox/code/work /home/devbox/code/personal
 
       # Move work git config template to proper location
-      if [ -f /tmp/gitconfig-work.template ]; then
-        mv /tmp/gitconfig-work.template /home/devbox/code/work/.gitconfig.template || {
-          echo "ERROR: Failed to move work git config template" >&2
-          exit 1
-        }
-      fi
+      [ -f /tmp/gitconfig-work.template ] && \
+        mv /tmp/gitconfig-work.template /home/devbox/code/work/.gitconfig.template
 
       # Set ownership for all devbox files
       echo "Setting file ownership..."
-      chown -R devbox:devbox /home/devbox || {
-        echo "ERROR: Failed to set ownership" >&2
-        exit 1
-      }
+      chown -R devbox:devbox /home/devbox
 
       # Process git configuration templates with environment variables
       echo "Processing git configuration templates..."
@@ -739,52 +723,40 @@ runcmd:
       GIT_WORK_NAME="${GIT_WORK_NAME:-CHANGEME}"
       GIT_WORK_EMAIL="${GIT_WORK_EMAIL:-changeme@example.com}"
 
-      # Warn if using placeholders
-      if [ "$GIT_USER_NAME" = "CHANGEME" ] || [ "$GIT_USER_EMAIL" = "changeme@example.com" ]; then
-        echo "WARNING: Git personal config using placeholder values. Set GIT_USER_NAME and GIT_USER_EMAIL" >&2
+      # Warn if using placeholders (consolidated check)
+      if [ "$GIT_USER_NAME" = "CHANGEME" ] || [ "$GIT_USER_EMAIL" = "changeme@example.com" ] || \
+         [ "$GIT_WORK_NAME" = "CHANGEME" ] || [ "$GIT_WORK_EMAIL" = "changeme@example.com" ]; then
+        echo "WARNING: Git config using placeholder values. Set GIT_USER_NAME, GIT_USER_EMAIL, GIT_WORK_NAME, GIT_WORK_EMAIL" >&2
       fi
 
-      if [ "$GIT_WORK_NAME" = "CHANGEME" ] || [ "$GIT_WORK_EMAIL" = "changeme@example.com" ]; then
-        echo "WARNING: Git work config using placeholder values. Set GIT_WORK_NAME and GIT_WORK_EMAIL" >&2
-      fi
+      # Process git config templates using sed
+      process_git_template() {
+        local template="$1"
+        local output="$2"
+        local name="$3"
+        local email="$4"
+        local label="$5"
 
-      # Process personal git config
-      if [ -f /home/devbox/.gitconfig.template ]; then
-        awk -v name="$GIT_USER_NAME" -v email="$GIT_USER_EMAIL" \
-            '{gsub(/__GIT_USER_NAME__/, name); gsub(/__GIT_USER_EMAIL__/, email); print}' \
-            /home/devbox/.gitconfig.template > /home/devbox/.gitconfig
+        sed -e "s|__GIT_USER_NAME__|${name}|g" \
+            -e "s|__GIT_USER_EMAIL__|${email}|g" \
+            -e "s|__GIT_WORK_NAME__|${name}|g" \
+            -e "s|__GIT_WORK_EMAIL__|${email}|g" \
+            "$template" > "$output"
 
-        if [ -s /home/devbox/.gitconfig ]; then
-          chown devbox:devbox /home/devbox/.gitconfig
-          chmod 644 /home/devbox/.gitconfig
-          rm -f /home/devbox/.gitconfig.template
-          echo "Personal git config created with user: ${GIT_USER_NAME}"
-        else
-          echo "ERROR: Failed to create personal git config" >&2
-          exit 1
-        fi
-      else
-        echo "WARNING: Personal git config template not found" >&2
-      fi
+        chown devbox:devbox "$output"
+        chmod 644 "$output"
+        rm -f "$template"
+        echo "${label} git config created with user: ${name}"
+      }
 
-      # Process work git config
-      if [ -f /home/devbox/code/work/.gitconfig.template ]; then
-        awk -v name="$GIT_WORK_NAME" -v email="$GIT_WORK_EMAIL" \
-            '{gsub(/__GIT_WORK_NAME__/, name); gsub(/__GIT_WORK_EMAIL__/, email); print}' \
-            /home/devbox/code/work/.gitconfig.template > /home/devbox/code/work/.gitconfig
+      # Process personal and work git configs
+      [ -f /home/devbox/.gitconfig.template ] && \
+        process_git_template /home/devbox/.gitconfig.template /home/devbox/.gitconfig \
+          "$GIT_USER_NAME" "$GIT_USER_EMAIL" "Personal"
 
-        if [ -s /home/devbox/code/work/.gitconfig ]; then
-          chown devbox:devbox /home/devbox/code/work/.gitconfig
-          chmod 644 /home/devbox/code/work/.gitconfig
-          rm -f /home/devbox/code/work/.gitconfig.template
-          echo "Work git config created with user: ${GIT_WORK_NAME}"
-        else
-          echo "ERROR: Failed to create work git config" >&2
-          exit 1
-        fi
-      else
-        echo "WARNING: Work git config template not found" >&2
-      fi
+      [ -f /home/devbox/code/work/.gitconfig.template ] && \
+        process_git_template /home/devbox/code/work/.gitconfig.template /home/devbox/code/work/.gitconfig \
+          "$GIT_WORK_NAME" "$GIT_WORK_EMAIL" "Work"
 
       # Add auto-switch to devbox user (idempotent)
       echo "Configuring auto-switch to devbox user..."
