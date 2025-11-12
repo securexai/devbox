@@ -55,7 +55,7 @@ packages:
   - build-essential                  # Compilers and build tools (gcc, g++, make)
   - ca-certificates                  # SSL/TLS certificate authorities for HTTPS
   - curl                             # Command-line HTTP client for data transfer
-  - dnsutils                         # DNS debugging tools (dig, nslookup)
+  - bind9-dnsutils                   # DNS debugging tools (dig, nslookup) - renamed in Ubuntu 25.10
   - gh                               # GitHub CLI for repository management
   - git                              # Version control system
   - gnupg                            # GPG encryption and signing tools
@@ -723,10 +723,13 @@ runcmd:
       GIT_WORK_NAME="${GIT_WORK_NAME:-CHANGEME}"
       GIT_WORK_EMAIL="${GIT_WORK_EMAIL:-changeme@example.com}"
 
-      # Warn if using placeholders (consolidated check)
-      if [ "$GIT_USER_NAME" = "CHANGEME" ] || [ "$GIT_USER_EMAIL" = "changeme@example.com" ] || \
-         [ "$GIT_WORK_NAME" = "CHANGEME" ] || [ "$GIT_WORK_EMAIL" = "changeme@example.com" ]; then
-        echo "WARNING: Git config using placeholder values. Set GIT_USER_NAME, GIT_USER_EMAIL, GIT_WORK_NAME, GIT_WORK_EMAIL" >&2
+      # Separate warnings for clarity
+      if [ "$GIT_USER_NAME" = "CHANGEME" ] || [ "$GIT_USER_EMAIL" = "changeme@example.com" ]; then
+        echo "WARNING: Personal git config using placeholder values. Set GIT_USER_NAME and GIT_USER_EMAIL" >&2
+      fi
+
+      if [ "$GIT_WORK_NAME" = "CHANGEME" ] || [ "$GIT_WORK_EMAIL" = "changeme@example.com" ]; then
+        echo "WARNING: Work git config using placeholder values. Set GIT_WORK_NAME and GIT_WORK_EMAIL" >&2
       fi
 
       # Process git config templates using sed
