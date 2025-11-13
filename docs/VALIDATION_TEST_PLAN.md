@@ -1,7 +1,7 @@
 # Multipass Cloud-Init Configuration Validation Test Plan
 
 **Document Version**: 1.0
-**Configuration Under Test**: `devbox-config-v2.yaml`
+**Configuration Under Test**: `cloudops-config-v2.yaml`
 **Best Practices Reference**: `docs/MULTIPASS_BEST_PRACTICES.md`
 **Test Date**: 2025-11-12
 
@@ -11,7 +11,7 @@
 
 This document defines the comprehensive validation testing strategy for the Multipass cloud-init configuration. The test plan validates compliance with documented best practices across five categories: pre-flight validation, VM launch testing, security validation, performance validation, and functional validation.
 
-**Objective**: Verify that `devbox-config-v2.yaml` adheres to documented best practices and functions correctly across all expected use cases.
+**Objective**: Verify that `cloudops-config-v2.yaml` adheres to documented best practices and functions correctly across all expected use cases.
 
 **Scope**: All aspects of cloud-init configuration, from YAML syntax to security posture to functional behavior.
 
@@ -35,7 +35,7 @@ This document defines the comprehensive validation testing strategy for the Mult
 - **CPU**: 1 core (minimal) / 2 cores (recommended)
 - **Memory**: 1GB (minimal) / 2GB (recommended)
 - **Disk**: 5GB (test) / 10GB (minimal) / 20GB (production)
-- **Name**: `test-devbox`
+- **Name**: `test-cloudops`
 
 ---
 
@@ -57,12 +57,12 @@ The validation is organized into five progressive levels, from syntax validation
 
 **Command**:
 ```bash
-cloud-init schema --config-file devbox-config-v2.yaml --annotate
+cloud-init schema --config-file cloudops-config-v2.yaml --annotate
 ```
 
 **Expected Result**:
 - Exit code: 0
-- Output: "Valid schema devbox-config-v2.yaml"
+- Output: "Valid schema cloudops-config-v2.yaml"
 - No warnings or errors
 
 **Pass Criteria**:
@@ -85,7 +85,7 @@ cloud-init schema --config-file devbox-config-v2.yaml --annotate
 
 **Command**:
 ```bash
-python -c "import yaml; yaml.safe_load(open('devbox-config-v2.yaml'))"
+python -c "import yaml; yaml.safe_load(open('cloudops-config-v2.yaml'))"
 ```
 
 **Expected Result**:
@@ -113,7 +113,7 @@ python -c "import yaml; yaml.safe_load(open('devbox-config-v2.yaml'))"
 
 **Command**:
 ```bash
-yamllint devbox-config-v2.yaml
+yamllint cloudops-config-v2.yaml
 ```
 
 **Expected Result**:
@@ -138,7 +138,7 @@ yamllint devbox-config-v2.yaml
 
 **Command**:
 ```bash
-grep -E '__[A-Z_]+__' devbox-config-v2.yaml | grep -v '#'
+grep -E '__[A-Z_]+__' cloudops-config-v2.yaml | grep -v '#'
 ```
 
 **Expected Result**:
@@ -171,7 +171,7 @@ grep -E '__[A-Z_]+__' devbox-config-v2.yaml | grep -v '#'
 
 **Command**:
 ```bash
-multipass launch 25.10 --name test-devbox --cloud-init devbox-config-v2.yaml --cpus 1 --memory 1G --disk 5G
+multipass launch 25.10 --name test-cloudops --cloud-init cloudops-config-v2.yaml --cpus 1 --memory 1G --disk 5G
 ```
 
 **Expected Result**:
@@ -189,7 +189,7 @@ multipass launch 25.10 --name test-devbox --cloud-init devbox-config-v2.yaml --c
 **Troubleshooting**:
 - Check Multipass daemon status
 - Verify network connectivity for image download
-- Review `multipass info test-devbox` for errors
+- Review `multipass info test-cloudops` for errors
 
 ---
 
@@ -199,7 +199,7 @@ multipass launch 25.10 --name test-devbox --cloud-init devbox-config-v2.yaml --c
 
 **Command**:
 ```bash
-multipass exec test-devbox -- cloud-init status --wait
+multipass exec test-cloudops -- cloud-init status --wait
 ```
 
 **Expected Result**:
@@ -215,7 +215,7 @@ multipass exec test-devbox -- cloud-init status --wait
 **Failure Impact**: Configuration did not apply successfully
 
 **Troubleshooting**:
-- Run `multipass exec test-devbox -- cloud-init status --long`
+- Run `multipass exec test-cloudops -- cloud-init status --long`
 - Check for specific module failures
 
 ---
@@ -226,7 +226,7 @@ multipass exec test-devbox -- cloud-init status --wait
 
 **Command**:
 ```bash
-multipass exec test-devbox -- cloud-init status --long
+multipass exec test-cloudops -- cloud-init status --long
 ```
 
 **Expected Result**:
@@ -253,7 +253,7 @@ multipass exec test-devbox -- cloud-init status --long
 
 **Command**:
 ```bash
-multipass exec test-devbox -- cat /var/log/devbox-setup.log
+multipass exec test-cloudops -- cat /var/log/cloudops-setup.log
 ```
 
 **Expected Result**:
@@ -265,7 +265,7 @@ multipass exec test-devbox -- cat /var/log/devbox-setup.log
 - [ ] Log file created successfully
 - [ ] Git config processing completed
 - [ ] SSH key generation completed
-- [ ] Devbox installation triggered
+- [ ] cloudops installation triggered
 
 **Known Acceptable Warnings**:
 - "WARNING: Git config still contains placeholder values" (if templates not processed)
@@ -284,7 +284,7 @@ multipass exec test-devbox -- cat /var/log/devbox-setup.log
 
 **Command**:
 ```bash
-multipass exec test-devbox -- cat /var/log/cloud-init-output.log | grep -E "ERROR|FAILED|WARNING"
+multipass exec test-cloudops -- cat /var/log/cloud-init-output.log | grep -E "ERROR|FAILED|WARNING"
 ```
 
 **Expected Result**:
@@ -313,10 +313,10 @@ multipass exec test-devbox -- cat /var/log/cloud-init-output.log | grep -E "ERRO
 **Commands**:
 ```bash
 # Check for common secret patterns
-multipass exec test-devbox -- grep -rE '(password|secret|api[_-]?key|token).*=.*["\047][^"\047 ]{8,}' /home/devbox/ 2>/dev/null || echo "No secrets found"
+multipass exec test-cloudops -- grep -rE '(password|secret|api[_-]?key|token).*=.*["\047][^"\047 ]{8,}' /home/cloudops/ 2>/dev/null || echo "No secrets found"
 
 # Check git config for placeholder detection
-multipass exec test-devbox -- grep -E 'CHANGEME|__[A-Z_]+__' /home/devbox/.gitconfig || echo "No placeholders found"
+multipass exec test-cloudops -- grep -E 'CHANGEME|__[A-Z_]+__' /home/cloudops/.gitconfig || echo "No placeholders found"
 ```
 
 **Expected Result**:
@@ -344,14 +344,14 @@ multipass exec test-devbox -- grep -E 'CHANGEME|__[A-Z_]+__' /home/devbox/.gitco
 **Commands**:
 ```bash
 # Check .bashrc permissions
-multipass exec test-devbox -- stat -c "%a %n" /home/devbox/.bashrc
+multipass exec test-cloudops -- stat -c "%a %n" /home/cloudops/.bashrc
 
 # Check .gitconfig permissions
-multipass exec test-devbox -- stat -c "%a %n" /home/devbox/.gitconfig
+multipass exec test-cloudops -- stat -c "%a %n" /home/cloudops/.gitconfig
 
 # Check SSH directory permissions
-multipass exec test-devbox -- stat -c "%a %n" /home/devbox/.ssh
-multipass exec test-devbox -- stat -c "%a %n" /home/devbox/.ssh/id_rsa
+multipass exec test-cloudops -- stat -c "%a %n" /home/cloudops/.ssh
+multipass exec test-cloudops -- stat -c "%a %n" /home/cloudops/.ssh/id_rsa
 ```
 
 **Expected Result**:
@@ -376,27 +376,27 @@ multipass exec test-devbox -- stat -c "%a %n" /home/devbox/.ssh/id_rsa
 
 ### Test 3.3: User Configuration Validation
 
-**Objective**: Verify devbox user exists with correct configuration
+**Objective**: Verify cloudops user exists with correct configuration
 
 **Commands**:
 ```bash
 # Check user exists
-multipass exec test-devbox -- id devbox
+multipass exec test-cloudops -- id cloudops
 
 # Check group membership
-multipass exec test-devbox -- groups devbox
+multipass exec test-cloudops -- groups cloudops
 
 # Check home directory ownership
-multipass exec test-devbox -- ls -ld /home/devbox
+multipass exec test-cloudops -- ls -ld /home/cloudops
 ```
 
 **Expected Result**:
-- User `devbox` exists with uid 1001
+- User `cloudops` exists with uid 1001
 - Member of `sudo` group
-- Home directory owned by devbox:devbox
+- Home directory owned by cloudops:cloudops
 
 **Pass Criteria**:
-- [ ] User devbox exists
+- [ ] User cloudops exists
 - [ ] User is member of sudo group
 - [ ] Home directory has correct ownership (1001:1001)
 - [ ] Home directory permissions are 755 or 700
@@ -416,10 +416,10 @@ multipass exec test-devbox -- ls -ld /home/devbox
 **Commands**:
 ```bash
 # Check sudo permissions
-multipass exec test-devbox -- sudo -l -U devbox
+multipass exec test-cloudops -- sudo -l -U cloudops
 
 # Test passwordless sudo
-multipass exec test-devbox -- sudo -n true && echo "NOPASSWD enabled" || echo "Password required"
+multipass exec test-cloudops -- sudo -n true && echo "NOPASSWD enabled" || echo "Password required"
 ```
 
 **Expected Result** (Development Mode):
@@ -444,18 +444,18 @@ multipass exec test-devbox -- sudo -n true && echo "NOPASSWD enabled" || echo "P
 **Commands**:
 ```bash
 # Check for SSH keys
-multipass exec test-devbox -- ls -la /home/devbox/.ssh/
+multipass exec test-cloudops -- ls -la /home/cloudops/.ssh/
 
 # Verify key types
-multipass exec test-devbox -- ssh-keygen -l -f /home/devbox/.ssh/id_rsa
-multipass exec test-devbox -- ssh-keygen -l -f /home/devbox/.ssh/id_ed25519_personal
+multipass exec test-cloudops -- ssh-keygen -l -f /home/cloudops/.ssh/id_rsa
+multipass exec test-cloudops -- ssh-keygen -l -f /home/cloudops/.ssh/id_ed25519_personal
 ```
 
 **Expected Result**:
-- Work key (RSA 4096): `/home/devbox/.ssh/id_rsa`
-- Personal key (ed25519): `/home/devbox/.ssh/id_ed25519_personal`
+- Work key (RSA 4096): `/home/cloudops/.ssh/id_rsa`
+- Personal key (ed25519): `/home/cloudops/.ssh/id_ed25519_personal`
 - Both keys have corresponding `.pub` files
-- Keys stored in `/home/devbox/.setup-complete`
+- Keys stored in `/home/cloudops/.setup-complete`
 
 **Pass Criteria**:
 - [ ] RSA key is 4096 bits
@@ -484,10 +484,10 @@ multipass exec test-devbox -- ssh-keygen -l -f /home/devbox/.ssh/id_ed25519_pers
 **Commands**:
 ```bash
 # Measure interactive shell startup
-multipass exec test-devbox -- bash -i -c 'time bash -i -c exit' 2>&1
+multipass exec test-cloudops -- bash -i -c 'time bash -i -c exit' 2>&1
 
 # Measure login shell startup
-multipass exec test-devbox -- bash -l -c 'exit' 2>&1
+multipass exec test-cloudops -- bash -l -c 'exit' 2>&1
 ```
 
 **Expected Result**:
@@ -518,10 +518,10 @@ multipass exec test-devbox -- bash -l -c 'exit' 2>&1
 **Commands**:
 ```bash
 # Check apt cache size
-multipass exec test-devbox -- du -sh /var/cache/apt/archives/
+multipass exec test-cloudops -- du -sh /var/cache/apt/archives/
 
 # Check overall disk usage
-multipass exec test-devbox -- df -h /
+multipass exec test-cloudops -- df -h /
 ```
 
 **Expected Result**:
@@ -548,10 +548,10 @@ multipass exec test-devbox -- df -h /
 **Commands**:
 ```bash
 # Check for core packages
-multipass exec test-devbox -- dpkg -l | grep -E '^ii' | grep -E 'git|curl|wget|jq|gh|build-essential'
+multipass exec test-cloudops -- dpkg -l | grep -E '^ii' | grep -E 'git|curl|wget|jq|gh|build-essential'
 
 # Count installed packages
-multipass exec test-devbox -- dpkg -l | grep '^ii' | wc -l
+multipass exec test-cloudops -- dpkg -l | grep '^ii' | wc -l
 ```
 
 **Expected Result**:
@@ -574,35 +574,35 @@ multipass exec test-devbox -- dpkg -l | grep '^ii' | wc -l
 
 ---
 
-### Test 4.4: Devbox Installation Verification
+### Test 4.4: cloudops Installation Verification
 
-**Objective**: Verify Devbox is installed and functional
+**Objective**: Verify cloudops is installed and functional
 
 **Commands**:
 ```bash
-# Check if Devbox is installed
-multipass exec test-devbox -- which devbox
+# Check if cloudops is installed
+multipass exec test-cloudops -- which cloudops
 
-# Verify Devbox version
-multipass exec test-devbox -- devbox version
+# Verify cloudops version
+multipass exec test-cloudops -- cloudops version
 ```
 
 **Expected Result**:
-- Devbox installed at `/home/devbox/.local/bin/devbox`
-- Devbox command accessible in PATH
+- cloudops installed at `/home/cloudops/.local/bin/cloudops`
+- cloudops command accessible in PATH
 - Version displays correctly
 
 **Pass Criteria**:
-- [ ] Devbox binary exists
-- [ ] Devbox is in PATH
-- [ ] Devbox version command succeeds
+- [ ] cloudops binary exists
+- [ ] cloudops is in PATH
+- [ ] cloudops version command succeeds
 
 **Failure Impact**: Cannot use per-project tool isolation (core feature)
 
 **Troubleshooting**:
-- Check runcmd Devbox installation section
+- Check runcmd cloudops installation section
 - Verify curl command succeeded
-- Check /var/log/devbox-setup.log
+- Check /var/log/cloudops-setup.log
 
 ---
 
@@ -619,16 +619,16 @@ multipass exec test-devbox -- devbox version
 **Commands**:
 ```bash
 # Check personal identity (default)
-multipass exec test-devbox -- bash -c 'cd /home/devbox/code/personal && git config user.name'
-multipass exec test-devbox -- bash -c 'cd /home/devbox/code/personal && git config user.email'
+multipass exec test-cloudops -- bash -c 'cd /home/cloudops/code/personal && git config user.name'
+multipass exec test-cloudops -- bash -c 'cd /home/cloudops/code/personal && git config user.email'
 
 # Check work identity
-multipass exec test-devbox -- bash -c 'cd /home/devbox/code/work && git config user.name'
-multipass exec test-devbox -- bash -c 'cd /home/devbox/code/work && git config user.email'
+multipass exec test-cloudops -- bash -c 'cd /home/cloudops/code/work && git config user.name'
+multipass exec test-cloudops -- bash -c 'cd /home/cloudops/code/work && git config user.email'
 
 # Verify global config
-multipass exec test-devbox -- git config --global user.name
-multipass exec test-devbox -- git config --global user.email
+multipass exec test-cloudops -- git config --global user.name
+multipass exec test-cloudops -- git config --global user.email
 ```
 
 **Expected Result**:
@@ -659,17 +659,17 @@ multipass exec test-devbox -- git config --global user.email
 **Commands**:
 ```bash
 # Test git aliases
-multipass exec test-devbox -- bash -l -c 'type gs'
-multipass exec test-devbox -- bash -l -c 'type ga'
-multipass exec test-devbox -- bash -l -c 'type gp'
+multipass exec test-cloudops -- bash -l -c 'type gs'
+multipass exec test-cloudops -- bash -l -c 'type ga'
+multipass exec test-cloudops -- bash -l -c 'type gp'
 
 # Test directory aliases
-multipass exec test-devbox -- bash -l -c 'type ll'
-multipass exec test-devbox -- bash -l -c 'type la'
+multipass exec test-cloudops -- bash -l -c 'type ll'
+multipass exec test-cloudops -- bash -l -c 'type la'
 
 # Test utility aliases
-multipass exec test-devbox -- bash -l -c 'type c'
-multipass exec test-devbox -- bash -l -c 'alias | grep -c alias'
+multipass exec test-cloudops -- bash -l -c 'type c'
+multipass exec test-cloudops -- bash -l -c 'alias | grep -c alias'
 ```
 
 **Expected Result**:
@@ -699,24 +699,24 @@ multipass exec test-devbox -- bash -l -c 'alias | grep -c alias'
 **Commands**:
 ```bash
 # Check directory existence
-multipass exec test-devbox -- test -d /home/devbox/code/work && echo "work exists" || echo "work missing"
-multipass exec test-devbox -- test -d /home/devbox/code/personal && echo "personal exists" || echo "personal missing"
+multipass exec test-cloudops -- test -d /home/cloudops/code/work && echo "work exists" || echo "work missing"
+multipass exec test-cloudops -- test -d /home/cloudops/code/personal && echo "personal exists" || echo "personal missing"
 
 # Check directory ownership
-multipass exec test-devbox -- ls -ld /home/devbox/code/work
-multipass exec test-devbox -- ls -ld /home/devbox/code/personal
+multipass exec test-cloudops -- ls -ld /home/cloudops/code/work
+multipass exec test-cloudops -- ls -ld /home/cloudops/code/personal
 ```
 
 **Expected Result**:
-- `/home/devbox/code/work` exists
-- `/home/devbox/code/personal` exists
-- Both owned by devbox:devbox
+- `/home/cloudops/code/work` exists
+- `/home/cloudops/code/personal` exists
+- Both owned by cloudops:cloudops
 - Both have appropriate permissions (755 or 700)
 
 **Pass Criteria**:
 - [ ] work directory exists
 - [ ] personal directory exists
-- [ ] Correct ownership (devbox:devbox)
+- [ ] Correct ownership (cloudops:cloudops)
 - [ ] Appropriate permissions
 
 **Failure Impact**: Git dual-identity may not work correctly
@@ -729,28 +729,28 @@ multipass exec test-devbox -- ls -ld /home/devbox/code/personal
 
 ### Test 5.4: Ubuntu User Auto-Switch Verification
 
-**Objective**: Verify ubuntu user bashrc switches to devbox user
+**Objective**: Verify ubuntu user bashrc switches to cloudops user
 
 **Commands**:
 ```bash
 # Check if ubuntu .bashrc has switch logic
-multipass exec test-devbox -- grep -c "DEVBOX_SWITCHED" /home/ubuntu/.bashrc || echo "Not found"
+multipass exec test-cloudops -- grep -c "cloudops_SWITCHED" /home/ubuntu/.bashrc || echo "Not found"
 
 # Verify switch message exists
-multipass exec test-devbox -- grep "Switching to devbox user" /home/ubuntu/.bashrc || echo "Not found"
+multipass exec test-cloudops -- grep "Switching to cloudops user" /home/ubuntu/.bashrc || echo "Not found"
 ```
 
 **Expected Result**:
 - ubuntu .bashrc contains switch logic
-- Guard variable DEVBOX_SWITCHED present
+- Guard variable cloudops_SWITCHED present
 - Switch happens automatically on ubuntu login
 
 **Pass Criteria**:
-- [ ] DEVBOX_SWITCHED guard exists
+- [ ] cloudops_SWITCHED guard exists
 - [ ] Switch logic present
 - [ ] Only one occurrence (idempotent)
 
-**Failure Impact**: Users land in ubuntu account instead of devbox
+**Failure Impact**: Users land in ubuntu account instead of cloudops
 
 **Troubleshooting**:
 - Check runcmd ubuntu bashrc modification
@@ -765,23 +765,23 @@ multipass exec test-devbox -- grep "Switching to devbox user" /home/ubuntu/.bash
 **Commands**:
 ```bash
 # Check vm.swappiness
-multipass exec test-devbox -- sysctl vm.swappiness
+multipass exec test-cloudops -- sysctl vm.swappiness
 
 # Check vm.vfs_cache_pressure
-multipass exec test-devbox -- sysctl vm.vfs_cache_pressure
+multipass exec test-cloudops -- sysctl vm.vfs_cache_pressure
 
 # Check fs.inotify.max_user_watches
-multipass exec test-devbox -- sysctl fs.inotify.max_user_watches
+multipass exec test-cloudops -- sysctl fs.inotify.max_user_watches
 
 # Verify config file exists
-multipass exec test-devbox -- cat /etc/sysctl.d/99-devbox.conf
+multipass exec test-cloudops -- cat /etc/sysctl.d/99-cloudops.conf
 ```
 
 **Expected Result**:
 - vm.swappiness = 10
 - vm.vfs_cache_pressure = 50
 - fs.inotify.max_user_watches = 524288
-- Config file /etc/sysctl.d/99-devbox.conf exists
+- Config file /etc/sysctl.d/99-cloudops.conf exists
 
 **Pass Criteria**:
 - [ ] swappiness set to 10
@@ -793,7 +793,7 @@ multipass exec test-devbox -- cat /etc/sysctl.d/99-devbox.conf
 
 **Troubleshooting**:
 - Check write_files sysctl configuration
-- Manually apply with `sysctl -p /etc/sysctl.d/99-devbox.conf`
+- Manually apply with `sysctl -p /etc/sysctl.d/99-cloudops.conf`
 
 ---
 
@@ -810,14 +810,14 @@ multipass exec test-devbox -- cat /etc/sysctl.d/99-devbox.conf
 **Commands**:
 ```bash
 # Clean and re-run cloud-init
-multipass exec test-devbox -- sudo cloud-init clean --logs
-multipass exec test-devbox -- sudo cloud-init init --local
-multipass exec test-devbox -- sudo cloud-init init
-multipass exec test-devbox -- sudo cloud-init modules --mode=config
-multipass exec test-devbox -- sudo cloud-init modules --mode=final
+multipass exec test-cloudops -- sudo cloud-init clean --logs
+multipass exec test-cloudops -- sudo cloud-init init --local
+multipass exec test-cloudops -- sudo cloud-init init
+multipass exec test-cloudops -- sudo cloud-init modules --mode=config
+multipass exec test-cloudops -- sudo cloud-init modules --mode=final
 
 # Check status
-multipass exec test-devbox -- cloud-init status --long
+multipass exec test-cloudops -- cloud-init status --long
 ```
 
 **Expected Result**:
@@ -843,14 +843,14 @@ multipass exec test-devbox -- cloud-init status --long
 **Commands**:
 ```bash
 # Check for duplicate bashrc switches
-multipass exec test-devbox -- grep -c "DEVBOX_SWITCHED" /home/ubuntu/.bashrc
+multipass exec test-cloudops -- grep -c "cloudops_SWITCHED" /home/ubuntu/.bashrc
 
 # Check for duplicate aliases
-multipass exec test-devbox -- grep -c "alias gs=" /home/devbox/.bashrc
+multipass exec test-cloudops -- grep -c "alias gs=" /home/cloudops/.bashrc
 ```
 
 **Expected Result**:
-- DEVBOX_SWITCHED appears exactly once
+- cloudops_SWITCHED appears exactly once
 - Aliases appear exactly once
 - No duplicated configuration
 
@@ -876,23 +876,23 @@ multipass exec test-devbox -- grep -c "alias gs=" /home/devbox/.bashrc
 
 ```bash
 #!/bin/bash
-# test-devbox-config.sh - Automated validation script
+# test-cloudops-config.sh - Automated validation script
 
 set -euo pipefail
 
-echo "=== DevBox Configuration Validation ==="
+echo "=== cloudops Configuration Validation ==="
 echo
 
 # Level 1: Pre-Flight
 echo "Level 1: Pre-Flight Validation"
-cloud-init schema --config-file devbox-config-v2.yaml --annotate || exit 1
+cloud-init schema --config-file cloudops-config-v2.yaml --annotate || exit 1
 echo "✓ YAML schema valid"
 
 # Level 2: VM Launch
 echo
 echo "Level 2: VM Launch Testing"
-multipass launch 25.10 --name test-devbox --cloud-init devbox-config-v2.yaml --cpus 1 --memory 1G --disk 5G
-multipass exec test-devbox -- cloud-init status --wait
+multipass launch 25.10 --name test-cloudops --cloud-init cloudops-config-v2.yaml --cpus 1 --memory 1G --disk 5G
+multipass exec test-cloudops -- cloud-init status --wait
 echo "✓ VM launched and cloud-init completed"
 
 # Level 3-5: Validation tests
@@ -903,7 +903,7 @@ echo "Level 3-5: Validation Tests"
 # Cleanup
 echo
 echo "Cleaning up test VM..."
-multipass delete test-devbox && multipass purge
+multipass delete test-cloudops && multipass purge
 echo "✓ Cleanup complete"
 
 echo
@@ -997,26 +997,26 @@ echo "=== All Tests Passed ==="
 
 ```bash
 # Validate YAML
-cloud-init schema --config-file devbox-config-v2.yaml --annotate
+cloud-init schema --config-file cloudops-config-v2.yaml --annotate
 
 # Launch test VM
-multipass launch 25.10 --name test-devbox --cloud-init devbox-config-v2.yaml --cpus 1 --memory 1G --disk 5G
+multipass launch 25.10 --name test-cloudops --cloud-init cloudops-config-v2.yaml --cpus 1 --memory 1G --disk 5G
 
 # Wait for cloud-init
-multipass exec test-devbox -- cloud-init status --wait
+multipass exec test-cloudops -- cloud-init status --wait
 
 # Check for errors
-multipass exec test-devbox -- cloud-init status --long
+multipass exec test-cloudops -- cloud-init status --long
 
 # View logs
-multipass exec test-devbox -- cat /var/log/devbox-setup.log
-multipass exec test-devbox -- cat /var/log/cloud-init-output.log
+multipass exec test-cloudops -- cat /var/log/cloudops-setup.log
+multipass exec test-cloudops -- cat /var/log/cloud-init-output.log
 
 # Shell into VM
-multipass shell test-devbox
+multipass shell test-cloudops
 
 # Delete test VM
-multipass delete test-devbox && multipass purge
+multipass delete test-cloudops && multipass purge
 ```
 
 ---

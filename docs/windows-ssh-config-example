@@ -1,16 +1,16 @@
-# SSH Config Example for Multipass DevBox on Windows
+# SSH Config Example for Multipass cloudops on Windows
 # Location: C:\Users\s.tapia\.ssh\config
 #
 # Instructions:
 # 1. Copy this file to C:\Users\s.tapia\.ssh\config (remove the -example suffix)
-# 2. Update the HostName with your devbox VM's IP address
+# 2. Update the HostName with your cloudops VM's IP address
 # 3. Update the IdentityFile path if you use a different key location
 # 4. Customize settings as needed for your environment
 
-# Basic DevBox Configuration (Recommended)
-Host devbox
+# Basic cloudops Configuration (Recommended)
+Host cloudops
     HostName 172.29.10.254
-    User devbox
+    User cloudops
     Port 22
     IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
     ForwardAgent yes
@@ -20,32 +20,32 @@ Host devbox
     StrictHostKeyChecking accept-new
     UserKnownHostsFile C:\Users\s.tapia\.ssh\known_hosts
 
-# Alternative: DevBox with Password Authentication
+# Alternative: cloudops with Password Authentication
 # Uncomment if you prefer password auth over SSH keys
-#Host devbox-password
+#Host cloudops-password
 #    HostName 172.29.10.254
-#    User devbox
+#    User cloudops
 #    Port 22
 #    PreferredAuthentications password
 #    ServerAliveInterval 60
 #    ServerAliveCountMax 3
 
-# Alternative: DevBox with Dynamic IP Resolution via Multipass
+# Alternative: cloudops with Dynamic IP Resolution via Multipass
 # Useful if VM IP changes frequently
 # Requires: multipass and nc (netcat) in PATH
-#Host devbox-auto
+#Host cloudops-auto
 #    HostName 172.29.10.254
-#    User devbox
+#    User cloudops
 #    Port 22
-#    ProxyCommand multipass exec devbox -- nc -q0 localhost 22
+#    ProxyCommand multipass exec cloudops -- nc -q0 localhost 22
 #    IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
 #    ForwardAgent yes
 
-# DevBox with Port Forwarding
+# cloudops with Port Forwarding
 # Forwards common development ports from VM to Windows localhost
-Host devbox-ports
+Host cloudops-ports
     HostName 172.29.10.254
-    User devbox
+    User cloudops
     Port 22
     IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
     ForwardAgent yes
@@ -60,24 +60,24 @@ Host devbox-ports
     LocalForward 6379 localhost:6379  # Redis
     LocalForward 27017 localhost:27017  # MongoDB
 
-# Multiple DevBox Environments Example
-#Host devbox-prod
+# Multiple cloudops Environments Example
+#Host cloudops-prod
 #    HostName 172.29.10.254
-#    User devbox
+#    User cloudops
 #    IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
 #    ForwardAgent yes
 #
-#Host devbox-test
+#Host cloudops-test
 #    HostName 172.29.10.255
-#    User devbox
+#    User cloudops
 #    IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
 #    ForwardAgent yes
 
 # Verbose/Debug Configuration
 # Use this for troubleshooting connection issues
-#Host devbox-debug
+#Host cloudops-debug
 #    HostName 172.29.10.254
-#    User devbox
+#    User cloudops
 #    Port 22
 #    IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
 #    LogLevel DEBUG3
@@ -131,14 +131,14 @@ Host devbox-ports
 # 6. Keep this file readable only by you (Windows handles this automatically)
 
 # Quick Commands Reference:
-# - Connect: ssh devbox
-# - Copy files to VM: scp file.txt devbox:~/
-# - Copy files from VM: scp devbox:~/file.txt .
-# - Run remote command: ssh devbox "ls -la"
-# - Create SSH tunnel: ssh -L 8080:localhost:8080 devbox
+# - Connect: ssh cloudops
+# - Copy files to VM: scp file.txt cloudops:~/
+# - Copy files from VM: scp cloudops:~/file.txt .
+# - Run remote command: ssh cloudops "ls -la"
+# - Create SSH tunnel: ssh -L 8080:localhost:8080 cloudops
 
 # Troubleshooting:
-# - Test connection: ssh -v devbox (verbose output)
-# - Very verbose: ssh -vvv devbox
+# - Test connection: ssh -v cloudops (verbose output)
+# - Very verbose: ssh -vvv cloudops
 # - Check key: ssh-keygen -l -f C:\Users\s.tapia\.ssh\id_ed25519
 # - List keys in agent: ssh-add -l

@@ -1,6 +1,6 @@
-# DevBox Configuration Optimization Summary
+# cloudops Configuration Optimization Summary
 
-This document summarizes the optimizations applied to `devbox-config-v2.yaml`.
+This document summarizes the optimizations applied to `cloudops-config-v2.yaml`.
 
 ## Date
 
@@ -106,20 +106,20 @@ nvm() {
 
 **Before:**
 ```bash
-- echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
-- chown devbox:devbox /home/devbox/.setup-complete
+- echo "cloudops setup completed at $(date)" > /home/cloudops/.setup-complete
+- chown cloudops:cloudops /home/cloudops/.setup-complete
 - echo 'if [ -t 0 ]...' >> /home/ubuntu/.bashrc
 ```
 
 **After:**
 ```bash
 - |
-  if [ ! -f /home/devbox/.setup-complete ]; then
-    echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
-    chown devbox:devbox /home/devbox/.setup-complete
+  if [ ! -f /home/cloudops/.setup-complete ]; then
+    echo "cloudops setup completed at $(date)" > /home/cloudops/.setup-complete
+    chown cloudops:cloudops /home/cloudops/.setup-complete
   fi
 - |
-  if ! grep -q "DEVBOX_SWITCHED" /home/ubuntu/.bashrc 2>/dev/null; then
+  if ! grep -q "cloudops_SWITCHED" /home/ubuntu/.bashrc 2>/dev/null; then
     echo 'if [ -t 0 ]...' >> /home/ubuntu/.bashrc
   fi
 ```
@@ -134,11 +134,11 @@ nvm() {
 **Added:**
 ```bash
 - |
-  exec 1> >(tee -a /var/log/devbox-setup.log)
+  exec 1> >(tee -a /var/log/cloudops-setup.log)
   exec 2>&1
-  echo "=== DevBox Setup Started: $(date) ==="
+  echo "=== cloudops Setup Started: $(date) ==="
 # ... commands ...
-- echo "=== DevBox Setup Completed: $(date) ==="
+- echo "=== cloudops Setup Completed: $(date) ==="
 ```
 
 **Impact:**
@@ -151,15 +151,15 @@ nvm() {
 **Added to file header:**
 ```yaml
 # Validation:
-#   cloud-init schema --config-file devbox-config-v2.yaml --annotate
+#   cloud-init schema --config-file cloudops-config-v2.yaml --annotate
 #
 # Testing:
-#   multipass launch --name test-devbox --cloud-init devbox-config-v2.yaml
-#   multipass exec test-devbox -- cloud-init status --wait
-#   multipass exec test-devbox -- cat /var/log/cloud-init.log
+#   multipass launch --name test-cloudops --cloud-init cloudops-config-v2.yaml
+#   multipass exec test-cloudops -- cloud-init status --wait
+#   multipass exec test-cloudops -- cat /var/log/cloud-init.log
 #
 # Cleanup:
-#   multipass delete test-devbox && multipass purge
+#   multipass delete test-cloudops && multipass purge
 ```
 
 **Impact:**
@@ -167,14 +167,22 @@ nvm() {
 - Easier for users to validate changes
 - Follows best practices documentation
 
-#### 3.4 Removed Redundant Operations
+#### 3.4 File Permissions Strategy
 
-**Removed:**
-- Redundant chmod operations (permissions already set in write_files)
+**Implementation:**
+- Removed `permissions:` field from `write_files` entries (causes Multipass YAML parsing issues)
+- Added explicit `chmod` commands in `runcmd` section to set file permissions
+
+**Rationale:**
+- Multipass strips quotes from YAML values, causing cloud-init schema validation errors
+- `permissions: "0644"` becomes `permissions: 0644` (integer 420 in decimal)
+- Cloud-init expects string type, receives integer type, causing module failure
+- Using `chmod` in `runcmd` avoids YAML parsing issues and guarantees correct permissions
 
 **Impact:**
-- Cleaner configuration
-- Slightly faster execution
+- Resolves cloud-init schema validation errors
+- Ensures all files are created with correct permissions (644)
+- Configuration is more explicit and maintainable
 
 ### 4. Enhanced Package Management
 
@@ -248,11 +256,11 @@ package_upgrade: true
 
 ## Migration Guide for Existing Users
 
-If you have an existing `devbox-config-v2.yaml` with personal information:
+If you have an existing `cloudops-config-v2.yaml` with personal information:
 
 1. **Backup your current file:**
    ```bash
-   cp devbox-config-v2.yaml devbox-config-v2.yaml.backup
+   cp cloudops-config-v2.yaml cloudops-config-v2.yaml.backup
    ```
 
 2. **Update to the new template:**
@@ -268,20 +276,20 @@ If you have an existing `devbox-config-v2.yaml` with personal information:
 
 4. **Test the configuration:**
    ```bash
-   multipass launch --name test-devbox --cloud-init devbox-config-v2.yaml
-   multipass exec test-devbox -- cloud-init status --wait
-   multipass exec test-devbox -- cat /var/log/devbox-setup.log
+   multipass launch --name test-cloudops --cloud-init cloudops-config-v2.yaml
+   multipass exec test-cloudops -- cloud-init status --wait
+   multipass exec test-cloudops -- cat /var/log/cloudops-setup.log
    ```
 
 5. **Verify customizations:**
    ```bash
-   multipass exec test-devbox -- cat ~/.gitconfig
-   multipass exec test-devbox -- cat ~/code/work/.gitconfig
+   multipass exec test-cloudops -- cat ~/.gitconfig
+   multipass exec test-cloudops -- cat ~/code/work/.gitconfig
    ```
 
 6. **Cleanup test instance:**
    ```bash
-   multipass delete test-devbox && multipass purge
+   multipass delete test-cloudops && multipass purge
    ```
 
 ## Testing Checklist
@@ -301,7 +309,7 @@ If you have an existing `devbox-config-v2.yaml` with personal information:
 1. **Modularization:** Split configuration into separate modules
    ```
    cloud-init/
-   ├── devbox-config-v2.yaml (main file with includes)
+   ├── cloudops-config-v2.yaml (main file with includes)
    ├── modules/
    │   ├── base-packages.yaml
    │   ├── users.yaml
