@@ -1,5 +1,5 @@
 #cloud-config
-# Ubuntu 25.10 - DevBox Configuration (devbox as default user)
+# Ubuntu 25.10 - CloudOps Configuration (cloudops as default user)
 #
 # IMPORTANT: This is a TEMPLATE configuration with placeholder values.
 # Customize the following sections before use:
@@ -9,7 +9,7 @@
 # Git Configuration Options:
 #
 #   Option 1: Environment Variables (recommended for automation)
-#     multipass launch --name devbox --cloud-init devbox-config-v2.yaml \
+#     multipass launch --name cloudops --cloud-init cloudops-config-v2.yaml \
 #       -e GIT_USER_NAME="Your Name" \
 #       -e GIT_USER_EMAIL="your@email.com" \
 #       -e GIT_WORK_NAME="Work Name" \
@@ -21,17 +21,17 @@
 #       - CHANGEME / changeme@example.com (work config)
 #
 # Validation:
-#   cloud-init schema --config-file devbox-config-v2.yaml --annotate
+#   cloud-init schema --config-file cloudops-config-v2.yaml --annotate
 #
 # Testing:
-#   multipass launch --name test-devbox --cloud-init devbox-config-v2.yaml
-#   multipass exec test-devbox -- cloud-init status --wait
-#   multipass exec test-devbox -- cat /var/log/cloud-init.log
+#   multipass launch --name test-cloudops --cloud-init cloudops-config-v2.yaml
+#   multipass exec test-cloudops -- cloud-init status --wait
+#   multipass exec test-cloudops -- cat /var/log/cloud-init.log
 #
 # Cleanup:
-#   multipass delete test-devbox && multipass purge
+#   multipass delete test-cloudops && multipass purge
 
-hostname: devbox
+hostname: cloudops
 timezone: America/Bogota
 locale: en_US.UTF-8
 
@@ -39,8 +39,8 @@ locale: en_US.UTF-8
 # SECURITY NOTE: NOPASSWD sudo is convenient for development but reduces security.
 # For production environments, remove NOPASSWD to require password authentication.
 users:
-  - name: devbox
-    gecos: DevBox User
+  - name: cloudops
+    gecos: CloudOps User
     shell: /bin/bash
     groups: [adm, cdrom, dip, plugdev, sudo]
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
@@ -71,14 +71,12 @@ packages:
   - software-properties-common       # Scripts for managing software repositories
   - tree                             # Directory visualization
   - unzip                            # Extract files from ZIP archives
-  - vim                              # Alternative text editor
   - wget                             # Non-interactive HTTP/FTP file downloader
 
 # Configuration files
 write_files:
-  # Custom .bashrc for devbox user
-  - path: /home/devbox/.bashrc
-    permissions: '0644'
+  # Custom .bashrc for cloudops user
+  - path: /home/cloudops/.bashrc
     content: |
       # ~/.bashrc: executed by bash(1) for non-login shells.
       # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
@@ -329,9 +327,8 @@ write_files:
           . "$HOME/.cargo/env"
       fi
 
-  # Custom .bash_aliases for devbox user
-  - path: /home/devbox/.bash_aliases
-    permissions: '0644'
+  # Custom .bash_aliases for cloudops user
+  - path: /home/cloudops/.bash_aliases
     content: |
       # ~/.bash_aliases
       # Custom aliases for enhanced productivity
@@ -631,8 +628,7 @@ write_files:
   # Note: This template will be processed by runcmd to support environment variables
   # TEMPLATE: Replace YOUR_NAME and YOUR_EMAIL with your actual information
   # OR: Pass via environment variables: GIT_USER_NAME and GIT_USER_EMAIL
-  - path: /home/devbox/.gitconfig.template
-    permissions: '0644'
+  - path: /home/cloudops/.gitconfig.template
     content: |
       [user]
           name = __GIT_USER_NAME__
@@ -661,7 +657,6 @@ write_files:
   # TEMPLATE: Replace WORK_NAME and WORK_EMAIL with your work information
   # OR: Pass via environment variables: GIT_WORK_NAME and GIT_WORK_EMAIL
   - path: /tmp/gitconfig-work.template
-    permissions: '0644'
     content: |
       [user]
           name = __GIT_WORK_NAME__
@@ -669,7 +664,6 @@ write_files:
 
   # Netplan configuration for bridge networking (commented template)
   - path: /etc/netplan/60-bridge.yaml
-    permissions: '0644'
     content: |
       # Bridge Network Configuration
       # Edit this file to enable bridge networking
@@ -700,19 +694,27 @@ runcmd:
   - |
     {
       set -euo pipefail
-      echo "=== DevBox Setup Started: $(date) ==="
+      echo "=== CloudOps Setup Started: $(date) ==="
 
       # Create directory structure
       echo "Creating directory structure..."
-      mkdir -p /home/devbox/code/work /home/devbox/code/personal
+      mkdir -p /home/cloudops/code/work /home/cloudops/code/personal
 
       # Move work git config template to proper location
       [ -f /tmp/gitconfig-work.template ] && \
-        mv /tmp/gitconfig-work.template /home/devbox/code/work/.gitconfig.template
+        mv /tmp/gitconfig-work.template /home/cloudops/code/work/.gitconfig.template
 
-      # Set ownership for all devbox files
+      # Set ownership for all cloudops files
       echo "Setting file ownership..."
-      chown -R devbox:devbox /home/devbox
+      chown -R cloudops:cloudops /home/cloudops
+
+      # Set file permissions explicitly (permissions field causes YAML 1.1 parsing issues)
+      echo "Setting file permissions..."
+      chmod 644 /home/cloudops/.bashrc
+      chmod 644 /home/cloudops/.bash_aliases
+      chmod 644 /home/cloudops/.gitconfig.template
+      chmod 644 /home/cloudops/code/work/.gitconfig.template
+      chmod 644 /etc/netplan/60-bridge.yaml
 
       # Process git configuration templates with environment variables
       echo "Processing git configuration templates..."
@@ -746,25 +748,25 @@ runcmd:
             -e "s|__GIT_WORK_EMAIL__|${email}|g" \
             "$template" > "$output"
 
-        chown devbox:devbox "$output"
+        chown cloudops:cloudops "$output"
         chmod 644 "$output"
         rm -f "$template"
         echo "${label} git config created with user: ${name}"
       }
 
       # Process personal and work git configs
-      [ -f /home/devbox/.gitconfig.template ] && \
-        process_git_template /home/devbox/.gitconfig.template /home/devbox/.gitconfig \
+      [ -f /home/cloudops/.gitconfig.template ] && \
+        process_git_template /home/cloudops/.gitconfig.template /home/cloudops/.gitconfig \
           "$GIT_USER_NAME" "$GIT_USER_EMAIL" "Personal"
 
-      [ -f /home/devbox/code/work/.gitconfig.template ] && \
-        process_git_template /home/devbox/code/work/.gitconfig.template /home/devbox/code/work/.gitconfig \
+      [ -f /home/cloudops/code/work/.gitconfig.template ] && \
+        process_git_template /home/cloudops/code/work/.gitconfig.template /home/cloudops/code/work/.gitconfig \
           "$GIT_WORK_NAME" "$GIT_WORK_EMAIL" "Work"
 
-      # Add auto-switch to devbox user (idempotent)
-      echo "Configuring auto-switch to devbox user..."
-      if ! grep -q "DEVBOX_SWITCHED" /home/ubuntu/.bashrc 2>/dev/null; then
-        echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$DEVBOX_SWITCHED" ]; then export DEVBOX_SWITCHED=1; exec sudo -i -u devbox; fi' >> /home/ubuntu/.bashrc
+      # Add auto-switch to cloudops user (idempotent)
+      echo "Configuring auto-switch to cloudops user..."
+      if ! grep -q "CLOUDOPS_SWITCHED" /home/ubuntu/.bashrc 2>/dev/null; then
+        echo 'if [ -t 0 ] && [ "$USER" = "ubuntu" ] && [ -z "$CLOUDOPS_SWITCHED" ]; then export CLOUDOPS_SWITCHED=1; exec sudo -i -u cloudops; fi' >> /home/ubuntu/.bashrc
       fi
 
       # Clean up package cache to reduce disk usage
@@ -773,18 +775,18 @@ runcmd:
       rm -rf /var/cache/apt/archives/* || echo "WARNING: Cache cleanup failed (non-critical)"
 
       # Create completion marker (last step)
-      if [ ! -f /home/devbox/.setup-complete ]; then
-        echo "DevBox setup completed at $(date)" > /home/devbox/.setup-complete
-        chown devbox:devbox /home/devbox/.setup-complete
+      if [ ! -f /home/cloudops/.setup-complete ]; then
+        echo "CloudOps setup completed at $(date)" > /home/cloudops/.setup-complete
+        chown cloudops:cloudops /home/cloudops/.setup-complete
       fi
 
-      echo "=== DevBox Setup Completed Successfully: $(date) ==="
-    } 2>&1 | tee -a /var/log/devbox-setup.log
+      echo "=== CloudOps Setup Completed Successfully: $(date) ==="
+    } 2>&1 | tee -a /var/log/cloudops-setup.log
 
 final_message: |
-  ✅ Ubuntu 25.10 DevBox setup complete!
+  ✅ Ubuntu 25.10 CloudOps setup complete!
 
-  Default user: devbox
+  Default user: cloudops
   Custom bash configuration installed with:
   - Full .bashrc with history, completions, NVM lazy loading
   - Comprehensive .bash_aliases with Git, Docker, Podman, Kubernetes, Azure, Terraform shortcuts
@@ -810,7 +812,7 @@ final_message: |
     3. Run: sudo netplan apply
 
   Access your instance:
-    multipass shell devbox
+    multipass shell cloudops
 
   View setup logs:
-    multipass exec devbox -- cat /var/log/devbox-setup.log
+    multipass exec cloudops -- cat /var/log/cloudops-setup.log

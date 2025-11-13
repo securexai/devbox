@@ -34,3 +34,7 @@ desktop.ini
 
 # Claude local settings (user-specific)
 .claude/settings.local.json
+
+# AI Assistant Configuration Files (user-specific)
+CLAUDE.md
+GEMINI.md

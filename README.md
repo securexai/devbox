@@ -1,4 +1,4 @@
-# Multipass DevBox Configuration
+# Multipass cloudops Configuration
 
 A production-ready, security-hardened cloud-init template for creating Ubuntu
 development environments with Canonical Multipass. Transform a vanilla Ubuntu VM
@@ -29,8 +29,8 @@ into a fully-configured development workstation in under 5 minutes.
 - **200+ shell aliases** - Comprehensive shortcuts for Git, Docker, Podman,
   Kubernetes, Azure CLI, Terraform, pnpm
 - **20 curated packages** - Essential development tools pre-installed
-- **Auto-user switching** - Automatically logs in as devbox user (not ubuntu)
-- **Comprehensive logging** - Full setup logs at `/var/log/devbox-setup.log`
+- **Auto-user switching** - Automatically logs in as cloudops user (not ubuntu)
+- **Comprehensive logging** - Full setup logs at `/var/log/cloudops-setup.log`
 - **VS Code integration** - Ready for Remote SSH development
 
 ### Technology Stack
@@ -49,15 +49,15 @@ Pre-configured support for:
 
 ```bash
 # 1. Customize git configuration (Option A: Environment variables)
-multipass launch ubuntu:25.10 --name devbox \
-  --cloud-init devbox-config-v2.yaml \
+multipass launch ubuntu:25.10 --name cloudops \
+  --cloud-init cloudops-config-v2.yaml \
   -e GIT_USER_NAME="Your Name" \
   -e GIT_USER_EMAIL="your@email.com" \
   -e GIT_WORK_NAME="Work Name" \
   -e GIT_WORK_EMAIL="work@company.com"
 
 # 2. Access your development environment
-multipass shell devbox
+multipass shell cloudops
 
 # 3. Start coding!
 cd ~/code/personal
@@ -77,8 +77,8 @@ git clone https://github.com/yourusername/your-project.git
 Use environment variables to avoid editing the YAML file:
 
 ```bash
-multipass launch ubuntu:25.10 --name devbox \
-  --cloud-init devbox-config-v2.yaml \
+multipass launch ubuntu:25.10 --name cloudops \
+  --cloud-init cloudops-config-v2.yaml \
   --cpus 4 \
   --memory 8G \
   --disk 30G \
@@ -91,14 +91,14 @@ multipass launch ubuntu:25.10 --name devbox \
 ### Option 2: Manual Edit
 
 1. Clone or download this repository
-2. Edit `devbox-config-v2.yaml` and replace placeholders:
+2. Edit `cloudops-config-v2.yaml` and replace placeholders:
    - Line ~638: Replace `CHANGEME` and `changeme@example.com` (personal git config)
    - Line ~667: Replace `CHANGEME` and `changeme@example.com` (work git config)
 3. Launch with customized configuration:
 
 ```bash
-multipass launch ubuntu:25.10 --name devbox \
-  --cloud-init devbox-config-v2.yaml \
+multipass launch ubuntu:25.10 --name cloudops \
+  --cloud-init cloudops-config-v2.yaml \
   --cpus 4 \
   --memory 8G \
   --disk 30G
@@ -110,7 +110,7 @@ Validate the cloud-init configuration before launching:
 
 ```bash
 # Validate YAML syntax
-cloud-init schema --config-file devbox-config-v2.yaml --annotate
+cloud-init schema --config-file cloudops-config-v2.yaml --annotate
 ```
 
 ### Verification
@@ -119,13 +119,13 @@ After launch, verify the setup completed successfully:
 
 ```bash
 # Wait for cloud-init to complete
-multipass exec devbox -- cloud-init status --wait
+multipass exec cloudops -- cloud-init status --wait
 
 # Check setup logs
-multipass exec devbox -- cat /var/log/devbox-setup.log
+multipass exec cloudops -- cat /var/log/cloudops-setup.log
 
 # Verify git configuration
-multipass exec devbox -- git config --list
+multipass exec cloudops -- git config --list
 ```
 
 ## Customization
@@ -181,7 +181,7 @@ For team-wide configurations:
 
 ```text
 multipass/
-├── devbox-config-v2.yaml       # Main cloud-init configuration (747 lines)
+├── cloudops-config-v2.yaml       # Main cloud-init configuration (747 lines)
 ├── docs/
 │   ├── MULTIPASS_BEST_PRACTICES.md   # Comprehensive Multipass guide (701 lines)
 │   ├── OPTIMIZATION_SUMMARY.md       # Optimization details and metrics (355 lines)
@@ -213,22 +213,22 @@ multipass/
 ```bash
 # Instance management
 multipass list                               # List all instances
-multipass stop devbox                        # Stop instance
-multipass start devbox                       # Start instance
-multipass delete devbox && multipass purge   # Delete and cleanup
+multipass stop cloudops                        # Stop instance
+multipass start cloudops                       # Start instance
+multipass delete cloudops && multipass purge   # Delete and cleanup
 
 # Access and debugging
-multipass shell devbox                  # Interactive shell
-multipass exec devbox -- <command>      # Run single command
-multipass info devbox                   # View instance details
+multipass shell cloudops                  # Interactive shell
+multipass exec cloudops -- <command>      # Run single command
+multipass info cloudops                   # View instance details
 
 # File transfer
-multipass transfer devbox:~/file.txt .  # Copy file from VM
-multipass transfer file.txt devbox:~/   # Copy file to VM
+multipass transfer cloudops:~/file.txt .  # Copy file from VM
+multipass transfer file.txt cloudops:~/   # Copy file to VM
 
 # Resource adjustment (requires restart)
-multipass set local.devbox.cpus=4       # Change CPU allocation
-multipass set local.devbox.memory=8G    # Change memory allocation
+multipass set local.cloudops.cpus=4       # Change CPU allocation
+multipass set local.cloudops.memory=8G    # Change memory allocation
 ```
 
 ## Troubleshooting
@@ -237,24 +237,44 @@ multipass set local.devbox.memory=8G    # Change memory allocation
 
 ```bash
 # Check cloud-init status
-multipass exec devbox -- cloud-init status --long
+multipass exec cloudops -- cloud-init status --long
 
 # View cloud-init logs
-multipass exec devbox -- cat /var/log/cloud-init.log
-multipass exec devbox -- cat /var/log/cloud-init-output.log
+multipass exec cloudops -- cat /var/log/cloud-init.log
+multipass exec cloudops -- cat /var/log/cloud-init-output.log
 
 # View setup logs
-multipass exec devbox -- cat /var/log/devbox-setup.log
+multipass exec cloudops -- cat /var/log/cloudops-setup.log
 ```
+
+### Schema validation warnings about permissions
+
+If you see cloud-init schema errors like `write_files.*.permissions: 420 is not of type 'string'`, this is a **known issue** with Multipass YAML processing.
+
+**Root cause**: Multipass strips quotes from YAML values before passing to cloud-init, causing permissions fields to be interpreted as integers instead of strings.
+
+**Resolution**: This project uses explicit `chmod` commands in `runcmd` instead of the `permissions:` field to avoid this issue. The configuration will work correctly despite the warning.
+
+**Verification**:
+```bash
+# Verify schema validation passes with current configuration
+multipass exec cloudops -- sudo cloud-init schema --system
+
+# Check file permissions are correct
+multipass exec cloudops -- ls -la /home/cloudops/.bashrc
+# Should show: -rw-r--r-- (644)
+```
+
+**For details**, see [CLAUDE.md Known Issues section](CLAUDE.md#known-issues).
 
 ### Git configuration not working
 
 ```bash
 # Verify git configuration
-multipass exec devbox -- git config --list --show-origin
+multipass exec cloudops -- git config --list --show-origin
 
 # Check if template files exist
-multipass exec devbox -- ls -la ~/code/work/.gitconfig
+multipass exec cloudops -- ls -la ~/code/work/.gitconfig
 ```
 
 ### Slow shell startup
@@ -263,7 +283,7 @@ The configuration uses lazy-loading to optimize startup. If you notice slowness:
 
 ```bash
 # Check if NVM is loading eagerly
-multipass exec devbox -- time bash -i -c exit
+multipass exec cloudops -- time bash -i -c exit
 
 # Expected: ~50ms
 # If >500ms, NVM lazy-loading may not be working
@@ -283,19 +303,19 @@ See
 [Multipass Best Practices](docs/MULTIPASS_BEST_PRACTICES.md#bridge-networking)
 for details.
 
-### Multiple DevBox Instances
+### Multiple cloudops Instances
 
 Create multiple isolated development environments:
 
 ```bash
 # Backend development
-multipass launch --name devbox-backend --cloud-init devbox-config-v2.yaml
+multipass launch --name cloudops-backend --cloud-init cloudops-config-v2.yaml
 
 # Frontend development
-multipass launch --name devbox-frontend --cloud-init devbox-config-v2.yaml
+multipass launch --name cloudops-frontend --cloud-init cloudops-config-v2.yaml
 
 # Testing environment
-multipass launch --name devbox-test --cloud-init devbox-config-v2.yaml
+multipass launch --name cloudops-test --cloud-init cloudops-config-v2.yaml
 ```
 
 ## Contributing
@@ -305,7 +325,7 @@ Contributions are welcome! To contribute:
 1. Fork this repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Validate YAML syntax: `cloud-init schema --config-file devbox-config-v2.yaml`
+4. Validate YAML syntax: `cloud-init schema --config-file cloudops-config-v2.yaml`
 5. Test with a live instance
 6. Commit using [Conventional Commits](https://www.conventionalcommits.org/)
 7. Push to your fork and create a Pull Request
@@ -329,5 +349,5 @@ This project is open source. Choose an appropriate license for your needs.
 
 ---
 
-**Ready to transform your development workflow?** Launch your first DevBox
+**Ready to transform your development workflow?** Launch your first cloudops
 instance in under 5 minutes!

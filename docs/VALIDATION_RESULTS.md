@@ -1,7 +1,7 @@
 # Multipass Cloud-Init Configuration Validation Results
 
 **Test Execution Date**: 2025-11-12
-**Configuration Tested**: `devbox-config-v2.yaml`
+**Configuration Tested**: `cloudops-config-v2.yaml`
 **Test Plan Version**: 1.0
 **Tester**: Claude Code Validation Agent
 
@@ -28,7 +28,7 @@ These issues resulted in cascading failures:
 - Kernel tuning configuration file not created
 - Complete .bashrc aliases not written (only 1 of 100+ aliases)
 - SSH keys not generated
-- Devbox tool not installed
+- cloudops tool not installed
 - Performance optimizations not applied
 
 **Production Readiness**: ❌ **NOT READY** - Critical bugs must be fixed before deployment
@@ -58,7 +58,7 @@ These issues resulted in cascading failures:
 
 **Configuration Details**:
 - Base Image: Ubuntu 25.10 (Oracular Oriole)
-- Configuration File: devbox-config-v2.yaml
+- Configuration File: cloudops-config-v2.yaml
 - Configuration Size: 812 lines, 31KB
 
 ---
@@ -75,7 +75,7 @@ These issues resulted in cascading failures:
 
 **Expected Command**:
 ```bash
-cloud-init schema --config-file devbox-config-v2.yaml --annotate
+cloud-init schema --config-file cloudops-config-v2.yaml --annotate
 ```
 
 **Result**: Cannot run on Windows. **However**, VM launch test revealed schema errors:
@@ -125,7 +125,7 @@ Error: Cloud config schema errors:
 
 **Command Executed**:
 ```bash
-grep -E '__[A-Z_]+__' devbox-config-v2.yaml | grep -v '#'
+grep -E '__[A-Z_]+__' cloudops-config-v2.yaml | grep -v '#'
 ```
 
 **Output**:
@@ -155,7 +155,7 @@ email = __GIT_WORK_EMAIL__
 
 **Command Executed**:
 ```bash
-multipass launch 25.10 --name test-devbox --cloud-init devbox-config-v2.yaml --cpus 1 --memory 1G --disk 5G
+multipass launch 25.10 --name test-cloudops --cloud-init cloudops-config-v2.yaml --cpus 1 --memory 1G --disk 5G
 ```
 
 **Launch Time**: ~2-3 minutes
@@ -163,12 +163,12 @@ multipass launch 25.10 --name test-devbox --cloud-init devbox-config-v2.yaml --c
 **VM Status**:
 ```
 Name                    State             IPv4             Image
-test-devbox             Running           172.29.7.101     Ubuntu 25.10
+test-cloudops             Running           172.29.7.101     Ubuntu 25.10
 ```
 
 **VM Details**:
 ```
-Name:           test-devbox
+Name:           test-cloudops
 State:          Running
 IPv4:           172.29.7.101
 CPU(s):         1
@@ -189,7 +189,7 @@ Memory usage:   403.1MiB out of 894.3MiB
 
 **Command Executed**:
 ```bash
-multipass exec test-devbox -- cloud-init status --wait
+multipass exec test-cloudops -- cloud-init status --wait
 ```
 
 **Cloud-Init Status**:
@@ -211,7 +211,7 @@ status: error
 
 **Command Executed**:
 ```bash
-multipass exec test-devbox -- cloud-init status --long
+multipass exec test-cloudops -- cloud-init status --long
 ```
 
 **Detailed Status**:
@@ -230,14 +230,14 @@ errors:
 recoverable_errors:
 WARNING:
   - cloud-config failed schema validation! You may run 'sudo cloud-init schema --system' to check the details.
-  - Not unlocking password for user devbox. 'lock_passwd: false' present but no 'passwd'/'plain_text_passwd'/'hashed_passwd' provided
+  - Not unlocking password for user cloudops. 'lock_passwd: false' present but no 'passwd'/'plain_text_passwd'/'hashed_passwd' provided
   - Failure when attempting to install packages: [full package list]
   - 1 failed with exceptions, re-raising the last one
   - Running module package_update_upgrade_install failed
 ```
 
 **Modules Status**:
-- ✅ users: SUCCESS (devbox user created)
+- ✅ users: SUCCESS (cloudops user created)
 - ❌ packages: FAILED (dnsutils package not found)
 - ❌ write_files: FAILED (schema validation error)
 - ✅ runcmd: SUCCESS (setup script executed)
@@ -261,21 +261,21 @@ WARNING:
 
 **Command Executed**:
 ```bash
-multipass exec test-devbox -- cat /var/log/devbox-setup.log
+multipass exec test-cloudops -- cat /var/log/cloudops-setup.log
 ```
 
 **Setup Log Output**:
 ```
-=== DevBox Setup Started: Wed Nov 12 09:24:57 -05 2025 ===
+=== cloudops Setup Started: Wed Nov 12 09:24:57 -05 2025 ===
 Creating directory structure...
 Setting file ownership...
 Processing git configuration templates...
 WARNING: Git config using placeholder values. Set GIT_USER_NAME, GIT_USER_EMAIL, GIT_WORK_NAME, GIT_WORK_EMAIL
 Personal git config created with user: CHANGEME
 Work git config created with user: CHANGEME
-Configuring auto-switch to devbox user...
+Configuring auto-switch to cloudops user...
 Cleaning package cache...
-=== DevBox Setup Completed Successfully: Wed Nov 12 09:24:57 -05 2025 ===
+=== cloudops Setup Completed Successfully: Wed Nov 12 09:24:57 -05 2025 ===
 ```
 
 **Key Events Logged**:
@@ -298,7 +298,7 @@ Cleaning package cache...
 
 **Command Attempted**:
 ```bash
-multipass exec test-devbox -- cat /var/log/cloud-init-output.log
+multipass exec test-cloudops -- cat /var/log/cloud-init-output.log
 ```
 
 **Result**: Git Bash path conversion issue prevented log access. Error was captured in status --long output instead.
@@ -359,14 +359,14 @@ multipass exec test-devbox -- cat /var/log/cloud-init-output.log
 
 **User Details**:
 ```
-uid=1000(devbox) gid=1000(devbox) groups=1000(devbox),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev)
+uid=1000(cloudops) gid=1000(cloudops) groups=1000(cloudops),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev)
 ```
 
 **Validation Checklist**:
-- ✅ User devbox exists
+- ✅ User cloudops exists
 - ✅ UID: 1000
 - ✅ Member of sudo group
-- ✅ Home directory ownership: devbox:devbox
+- ✅ Home directory ownership: cloudops:cloudops
 - ✅ Appropriate group memberships
 
 **Result**: ✅ User configuration is correct
@@ -394,9 +394,9 @@ uid=1000(devbox) gid=1000(devbox) groups=1000(devbox),4(adm),24(cdrom),27(sudo),
 **SSH Directory Contents**:
 ```
 total 8
-drwx------ 2 devbox devbox 4096 Nov 12 09:24 .
-drwxr-xr-x 4 devbox devbox 4096 Nov 12 09:24 ..
--rw------- 1 devbox devbox    0 Nov 12 09:24 authorized_keys
+drwx------ 2 cloudops cloudops 4096 Nov 12 09:24 .
+drwxr-xr-x 4 cloudops cloudops 4096 Nov 12 09:24 ..
+-rw------- 1 cloudops cloudops    0 Nov 12 09:24 authorized_keys
 ```
 
 **Expected SSH Keys**:
@@ -407,7 +407,7 @@ drwxr-xr-x 4 devbox devbox 4096 Nov 12 09:24 ..
 
 **Setup Complete File**:
 ```
-DevBox setup completed at Wed Nov 12 09:24:57 -05 2025
+cloudops setup completed at Wed Nov 12 09:24:57 -05 2025
 ```
 
 **Result**: ❌ SSH keys were never generated
@@ -472,20 +472,20 @@ Disk usage: 2.3GiB out of 4.8GiB
 
 ---
 
-### Test 4.4: Devbox Installation Verification
+### Test 4.4: cloudops Installation Verification
 
 **Status**: ❌ FAIL
 
-**Devbox Check**:
+**cloudops Check**:
 ```bash
-which devbox
-# Output: Devbox not found
+which cloudops
+# Output: cloudops not found
 ```
 
-**Result**: ❌ Devbox was not installed
+**Result**: ❌ cloudops was not installed
 
 **Issues Found**:
-- ❌ **HIGH PRIORITY**: Devbox is a core feature of this configuration
+- ❌ **HIGH PRIORITY**: cloudops is a core feature of this configuration
 - ❌ Installation likely depends on files from write_files module
 - ❌ Per-project tool isolation (main selling point) is not functional
 
@@ -527,10 +527,10 @@ Work `.gitconfig`:
 
 **Git Config Test Results**:
 ```bash
-cd /home/devbox/code/personal && git config user.name
+cd /home/cloudops/code/personal && git config user.name
 # Output: (empty - falls back to global CHANGEME)
 
-cd /home/devbox/code/work && git config user.name
+cd /home/cloudops/code/work && git config user.name
 # Output: (empty - should use work CHANGEME)
 ```
 
@@ -548,7 +548,7 @@ cd /home/devbox/code/work && git config user.name
 
 **Alias Count**:
 ```bash
-grep -c '^alias' /home/devbox/.bashrc
+grep -c '^alias' /home/cloudops/.bashrc
 # Output: 1
 ```
 
@@ -578,7 +578,7 @@ alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo
 
 **Directory Check**:
 ```bash
-test -d /home/devbox/code/work && test -d /home/devbox/code/personal
+test -d /home/cloudops/code/work && test -d /home/cloudops/code/personal
 # Output: Directory structure OK
 ```
 
@@ -594,7 +594,7 @@ test -d /home/devbox/code/work && test -d /home/devbox/code/personal
 
 **Result**: Not tested - requires logging in as ubuntu user to verify auto-switch behavior
 
-**Note**: The runcmd log shows "Configuring auto-switch to devbox user..." completed, suggesting it was configured
+**Note**: The runcmd log shows "Configuring auto-switch to cloudops user..." completed, suggesting it was configured
 
 ---
 
@@ -619,14 +619,14 @@ sysctl vm.swappiness
 
 **Config File Check**:
 ```bash
-sudo ls -la /etc/sysctl.d/99-devbox.conf
+sudo ls -la /etc/sysctl.d/99-cloudops.conf
 # Output: No such file or directory
 ```
 
 **Result**: ❌ Kernel tuning configuration was never created
 
 **Issues Found**:
-- ❌ `/etc/sysctl.d/99-devbox.conf` does not exist
+- ❌ `/etc/sysctl.d/99-cloudops.conf` does not exist
 - ❌ write_files failure prevented sysctl config from being created
 - ❌ Performance optimizations not applied
 - ❌ System running with default kernel parameters
@@ -646,7 +646,7 @@ sudo ls -la /etc/sysctl.d/99-devbox.conf
   - No comprehensive .bashrc (missing 100+ aliases)
   - No kernel tuning configuration
   - No SSH key generation
-  - No Devbox installation
+  - No cloudops installation
 - **Fix**: Change all `permissions: 420` to `permissions: '0644'` (or appropriate string value)
 
 **Issue #2: Package Name Changed**
@@ -669,11 +669,11 @@ sudo ls -la /etc/sysctl.d/99-devbox.conf
 - **Root Cause**: SSH key generation depends on write_files (which failed)
 - **Fix**: Fix Issue #1, then verify key generation works
 
-**Issue #4: Devbox Not Installed**
+**Issue #4: cloudops Not Installed**
 - **Severity**: HIGH
 - **Impact**: Core feature (per-project tool isolation) is non-functional
 - **Root Cause**: Likely depends on write_files entries
-- **Fix**: Fix Issue #1, verify Devbox installation in runcmd
+- **Fix**: Fix Issue #1, verify cloudops installation in runcmd
 
 **Issue #5: Aliases Not Loaded**
 - **Severity**: HIGH
@@ -745,7 +745,7 @@ sudo ls -la /etc/sysctl.d/99-devbox.conf
 - ❌ Kernel tuning implementation
 - ❌ SSH key generation
 - ❌ Comprehensive .bashrc with aliases
-- ❌ Devbox installation
+- ❌ cloudops installation
 - ❌ Performance optimizations
 
 ---
@@ -758,7 +758,7 @@ The configuration uses **integer permissions** (e.g., `420`) instead of **string
 
 ```yaml
 write_files:
-  - path: /home/devbox/.bashrc
+  - path: /home/cloudops/.bashrc
     permissions: 420  # ❌ WRONG - cloud-init expects string
     # Should be:
     # permissions: '0644'  # ✅ CORRECT
@@ -774,7 +774,7 @@ write_files:
 1. write_files module fails → no files created
 2. No .bashrc → no aliases
 3. No sysctl config → no kernel tuning
-4. runcmd may depend on written files → Devbox not installed
+4. runcmd may depend on written files → cloudops not installed
 5. No SSH key scripts → no keys generated
 
 **Best Practice from CLAUDE.md** (line 165):
@@ -849,7 +849,7 @@ packages:
    # To:
    permissions: '0644'
    ```
-   - Affects lines: ~81, ~333, ~635, ~664, ~672 in devbox-config-v2.yaml
+   - Affects lines: ~81, ~333, ~635, ~664, ~672 in cloudops-config-v2.yaml
    - Impact: Fixes all write_files failures
    - Estimated effort: 5 minutes
 
@@ -863,7 +863,7 @@ packages:
    packages:
      - bind9-dnsutils
    ```
-   - Affects line: ~62 in devbox-config-v2.yaml
+   - Affects line: ~62 in cloudops-config-v2.yaml
    - Impact: Allows package installation to complete
    - Estimated effort: 2 minutes
 
@@ -872,7 +872,7 @@ packages:
    - Verify all write_files created correctly
    - Verify package installation completes
    - Verify SSH keys generated
-   - Verify Devbox installed
+   - Verify cloudops installed
    - Verify aliases loaded
    - Verify kernel tuning applied
    - Estimated effort: 15 minutes
@@ -939,7 +939,7 @@ The configuration demonstrates **solid architectural design** with excellent sec
 These bugs cause **cascading failures** that render core features non-functional:
 - ❌ No productivity aliases
 - ❌ No SSH keys
-- ❌ No Devbox (main selling point)
+- ❌ No cloudops (main selling point)
 - ❌ No kernel tuning
 - ❌ No performance optimizations
 
@@ -956,10 +956,10 @@ These bugs cause **cascading failures** that render core features non-functional
 
 **If Deployed As-Is**:
 - ✅ VM will launch
-- ✅ devbox user will be created
+- ✅ cloudops user will be created
 - ✅ Basic Git config structure created
 - ❌ Most productivity features missing
-- ❌ Per-project tool isolation (Devbox) non-functional
+- ❌ Per-project tool isolation (cloudops) non-functional
 - ❌ SSH authentication to Git services impossible
 - ❌ Performance not optimized
 
@@ -1025,7 +1025,7 @@ These bugs cause **cascading failures** that render core features non-functional
 14:24:00 - Level 2 VM Launch: FAIL (schema + package errors)
 14:24:15 - Level 3 Security: PARTIAL (SSH keys missing)
 14:24:30 - Level 4 Performance: FAIL (kernel tuning not applied)
-14:24:45 - Level 5 Functional: FAIL (aliases, Devbox missing)
+14:24:45 - Level 5 Functional: FAIL (aliases, cloudops missing)
 14:30:00 - Analysis and documentation completed
 ```
 
@@ -1037,7 +1037,7 @@ These bugs cause **cascading failures** that render core features non-functional
 
 **VM Information**:
 ```
-Name:           test-devbox
+Name:           test-cloudops
 State:          Running
 IPv4:           172.29.7.101
 Release:        Ubuntu 25.10
@@ -1047,18 +1047,18 @@ Disk:           2.3GiB out of 4.8GiB
 ```
 
 **Key Files Created**:
-- ✅ `/home/devbox/.bashrc` (248 lines - incomplete)
-- ✅ `/home/devbox/.gitconfig` (via runcmd)
-- ✅ `/home/devbox/code/work/.gitconfig` (via runcmd)
-- ✅ `/var/log/devbox-setup.log`
-- ❌ `/etc/sysctl.d/99-devbox.conf` (missing)
-- ❌ `/home/devbox/.ssh/id_rsa` (missing)
-- ❌ `/home/devbox/.ssh/id_ed25519_personal` (missing)
+- ✅ `/home/cloudops/.bashrc` (248 lines - incomplete)
+- ✅ `/home/cloudops/.gitconfig` (via runcmd)
+- ✅ `/home/cloudops/code/work/.gitconfig` (via runcmd)
+- ✅ `/var/log/cloudops-setup.log`
+- ❌ `/etc/sysctl.d/99-cloudops.conf` (missing)
+- ❌ `/home/cloudops/.ssh/id_rsa` (missing)
+- ❌ `/home/cloudops/.ssh/id_ed25519_personal` (missing)
 
 **Packages Verified Installed**:
 - ✅ gh (GitHub CLI): `/usr/bin/gh`
 - ❌ dnsutils: FAILED (package not found)
-- ❌ devbox: NOT INSTALLED
+- ❌ cloudops: NOT INSTALLED
 
 ---
 

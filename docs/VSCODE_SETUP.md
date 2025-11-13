@@ -1,6 +1,6 @@
-# VS Code Remote SSH Setup for Multipass DevBox
+# VS Code Remote SSH Setup for Multipass cloudops
 
-This guide provides step-by-step instructions for connecting Visual Studio Code to your multipass devbox VM using the Remote - SSH extension.
+This guide provides step-by-step instructions for connecting Visual Studio Code to your multipass cloudops VM using the Remote - SSH extension.
 
 ## Table of Contents
 
@@ -24,7 +24,7 @@ Before starting, verify you have:
 - **Windows 11** with PowerShell
 - **VS Code** installed ([Download](https://code.visualstudio.com/))
 - **Remote - SSH extension** installed in VS Code
-- **Multipass devbox VM** running
+- **Multipass cloudops VM** running
 - **Working SSH connection** from PowerShell
 
 ### Verify Prerequisites
@@ -37,7 +37,7 @@ code --version
 multipass list
 
 # Test SSH connection (replace IP with your VM's IP)
-ssh devbox@172.29.10.254
+ssh cloudops@172.29.10.254
 ```
 
 ---
@@ -49,11 +49,11 @@ ssh devbox@172.29.10.254
 1. Open VS Code
 2. Press `F1` or `Ctrl+Shift+P`
 3. Type "Remote-SSH: Connect to Host"
-4. Enter: `ssh devbox@172.29.10.254` (use your VM's IP)
+4. Enter: `ssh cloudops@172.29.10.254` (use your VM's IP)
 5. Select "Linux" as the remote platform
 6. Enter your password when prompted
 7. Wait for VS Code server to install (first time only)
-8. Open a folder: `File > Open Folder` → `/home/devbox`
+8. Open a folder: `File > Open Folder` → `/home/cloudops`
 
 **Note:** This works but requires password entry each time. For a better experience, follow the detailed setup below.
 
@@ -83,11 +83,11 @@ icacls "$env:USERPROFILE\.ssh" /inheritance:r
 icacls "$env:USERPROFILE\.ssh" /grant:r "$env:USERNAME:(OI)(CI)F"
 ```
 
-#### Step 1.2: Get your devbox VM IP address
+#### Step 1.2: Get your cloudops VM IP address
 
 ```powershell
-# Get the current IP address of devbox VM
-multipass info devbox
+# Get the current IP address of cloudops VM
+multipass info cloudops
 ```
 
 Look for the IPv4 address in the output (e.g., `172.29.10.254`).
@@ -97,10 +97,10 @@ Look for the IPv4 address in the output (e.g., `172.29.10.254`).
 Create or edit `C:\Users\s.tapia\.ssh\config`:
 
 ```ssh-config
-# Multipass DevBox VM
-Host devbox
+# Multipass cloudops VM
+Host cloudops
     HostName 172.29.10.254
-    User devbox
+    User cloudops
     Port 22
     ForwardAgent yes
     ServerAliveInterval 60
@@ -109,18 +109,18 @@ Host devbox
 
 # Alternative: Use multipass command to get IP dynamically
 # Note: This requires multipass in PATH
-Host devbox-auto
+Host cloudops-auto
     HostName 172.29.10.254
-    User devbox
+    User cloudops
     Port 22
-    ProxyCommand multipass exec devbox -- nc -q0 localhost 22
+    ProxyCommand multipass exec cloudops -- nc -q0 localhost 22
 ```
 
 **Configuration explanation:**
 
-- `Host devbox` - Friendly name for the connection
+- `Host cloudops` - Friendly name for the connection
 - `HostName` - IP address of the VM
-- `User` - Username on the VM (default: devbox)
+- `User` - Username on the VM (default: cloudops)
 - `ForwardAgent` - Forward SSH keys to VM
 - `ServerAliveInterval` - Keep connection alive (send keepalive every 60 seconds)
 - `ServerAliveCountMax` - Retry 3 times before disconnecting
@@ -130,10 +130,10 @@ Host devbox-auto
 
 ```powershell
 # Test connection using the config
-ssh devbox
+ssh cloudops
 ```
 
-You should now be able to connect by just typing `ssh devbox` instead of the full command.
+You should now be able to connect by just typing `ssh cloudops` instead of the full command.
 
 ---
 
@@ -145,17 +145,17 @@ Using SSH keys eliminates the need to enter passwords and is more secure.
 
 ```powershell
 # Generate ED25519 key (modern and secure)
-ssh-keygen -t ed25519 -C "vscode-devbox-connection"
+ssh-keygen -t ed25519 -C "vscode-cloudops-connection"
 
 # Or generate RSA key (for compatibility)
-ssh-keygen -t rsa -b 4096 -C "vscode-devbox-connection"
+ssh-keygen -t rsa -b 4096 -C "vscode-cloudops-connection"
 ```
 
 **When prompted:**
 - File location: Press Enter for default (`C:\Users\s.tapia\.ssh\id_ed25519`)
 - Passphrase: Press Enter for no passphrase (or enter one for extra security)
 
-#### Step 2.2: Copy public key to devbox VM
+#### Step 2.2: Copy public key to cloudops VM
 
 **Option A: Using ssh-copy-id (if available)**
 
@@ -164,7 +164,7 @@ ssh-keygen -t rsa -b 4096 -C "vscode-devbox-connection"
 Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
 
 # Copy the key
-ssh-copy-id -i $env:USERPROFILE\.ssh\id_ed25519.pub devbox@172.29.10.254
+ssh-copy-id -i $env:USERPROFILE\.ssh\id_ed25519.pub cloudops@172.29.10.254
 ```
 
 **Option B: Manual copy (recommended for Windows)**
@@ -174,7 +174,7 @@ ssh-copy-id -i $env:USERPROFILE\.ssh\id_ed25519.pub devbox@172.29.10.254
 Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | Set-Clipboard
 
 # Connect to VM and add the key
-ssh devbox@172.29.10.254
+ssh cloudops@172.29.10.254
 
 # On the VM, run:
 mkdir -p ~/.ssh
@@ -189,14 +189,14 @@ exit
 ```powershell
 # Copy key in one command
 $pubKey = Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub
-ssh devbox@172.29.10.254 "mkdir -p ~/.ssh && echo '$pubKey' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
+ssh cloudops@172.29.10.254 "mkdir -p ~/.ssh && echo '$pubKey' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
 ```
 
 #### Step 2.3: Test passwordless authentication
 
 ```powershell
 # Try connecting - should not ask for password
-ssh devbox
+ssh cloudops
 
 # If successful, you should be logged in without a password prompt
 ```
@@ -206,9 +206,9 @@ ssh devbox
 Edit `C:\Users\s.tapia\.ssh\config` and add the `IdentityFile` line:
 
 ```ssh-config
-Host devbox
+Host cloudops
     HostName 172.29.10.254
-    User devbox
+    User cloudops
     Port 22
     IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
     ForwardAgent yes
@@ -240,7 +240,7 @@ Host devbox
 {
     "remote.SSH.configFile": "C:\\Users\\s.tapia\\.ssh\\config",
     "remote.SSH.remotePlatform": {
-        "devbox": "linux"
+        "cloudops": "linux"
     },
     "remote.SSH.showLoginTerminal": true,
     "remote.SSH.useLocalServer": false,
@@ -261,17 +261,17 @@ In VS Code:
 1. Press `F1` or `Ctrl+Shift+P`
 2. Type "Remote-SSH: Open SSH Configuration File"
 3. Select `C:\Users\s.tapia\.ssh\config`
-4. Verify the devbox host entry exists
+4. Verify the cloudops host entry exists
 
 ---
 
 ### 4. First Connection
 
-#### Step 4.1: Connect to devbox
+#### Step 4.1: Connect to cloudops
 
 1. Press `F1` or `Ctrl+Shift+P`
 2. Type "Remote-SSH: Connect to Host"
-3. Select `devbox` from the list
+3. Select `cloudops` from the list
 4. A new VS Code window will open
 5. **First time only**: VS Code will install the server components (takes 1-2 minutes)
 
@@ -279,19 +279,19 @@ In VS Code:
 
 Once connected, you should see:
 
-- Bottom left corner: `SSH: devbox` in green
-- Terminal shows: `devbox@devbox:~$`
+- Bottom left corner: `SSH: cloudops` in green
+- Terminal shows: `cloudops@cloudops:~$`
 
 #### Step 4.3: Open a folder
 
 1. Click `File > Open Folder` or press `Ctrl+K Ctrl+O`
-2. Navigate to `/home/devbox` or `/home/devbox/code`
+2. Navigate to `/home/cloudops` or `/home/cloudops/code`
 3. Click "OK"
 
 #### Step 4.4: Open integrated terminal
 
 1. Press `` Ctrl+` `` or `View > Terminal`
-2. You should see a terminal connected to the devbox VM
+2. You should see a terminal connected to the cloudops VM
 3. Test: `pwd` should show your home directory
 
 ---
@@ -300,14 +300,14 @@ Once connected, you should see:
 
 ### Recommended Extensions for Remote Development
 
-Install these extensions on the remote (devbox VM):
+Install these extensions on the remote (cloudops VM):
 
 **Essential:**
 
 - Git History
 - GitLens
 - Docker (if using containers)
-- Remote - Containers (for devbox projects)
+- Remote - Containers (for cloudops projects)
 
 **Language Support:**
 
@@ -319,7 +319,7 @@ Install these extensions on the remote (devbox VM):
 
 1. Click Extensions icon
 2. Search for the extension
-3. Click "Install in SSH: devbox"
+3. Click "Install in SSH: cloudops"
 
 ### VS Code Remote Settings
 
@@ -330,7 +330,7 @@ Create `.vscode/settings.json` in your remote project:
     "files.watcherExclude": {
         "**/.git/objects/**": true,
         "**/node_modules/**": true,
-        "**/.devbox/**": true
+        "**/.cloudops/**": true
     },
     "terminal.integrated.defaultProfile.linux": "bash",
     "git.enableSmartCommit": true,
@@ -347,7 +347,7 @@ For large projects, adjust these settings in VS Code remote:
     "files.watcherExclude": {
         "**/.git/objects/**": true,
         "**/node_modules/**": true,
-        "**/.devbox/**": true,
+        "**/.cloudops/**": true,
         "**/target/**": true,
         "**/dist/**": true,
         "**/build/**": true
@@ -355,7 +355,7 @@ For large projects, adjust these settings in VS Code remote:
     "search.exclude": {
         "**/node_modules": true,
         "**/bower_components": true,
-        "**/.devbox": true,
+        "**/.cloudops": true,
         "**/target": true,
         "**/dist": true
     },
@@ -369,27 +369,27 @@ For large projects, adjust these settings in VS Code remote:
 
 ### Connection Issues
 
-#### Problem: "Could not establish connection to devbox"
+#### Problem: "Could not establish connection to cloudops"
 
 **Solution 1: Check VM is running**
 
 ```powershell
 multipass list
 # If not running:
-multipass start devbox
+multipass start cloudops
 ```
 
 **Solution 2: Verify IP address hasn't changed**
 
 ```powershell
-multipass info devbox
+multipass info cloudops
 # Update C:\Users\s.tapia\.ssh\config with new IP
 ```
 
 **Solution 3: Test SSH connection**
 
 ```powershell
-ssh -v devbox
+ssh -v cloudops
 # Check for errors in verbose output
 ```
 
@@ -405,10 +405,10 @@ Test-Path $env:USERPROFILE\.ssh\id_ed25519
 icacls $env:USERPROFILE\.ssh\id_ed25519
 
 # Verify public key is on VM
-ssh devbox "cat ~/.ssh/authorized_keys"
+ssh cloudops "cat ~/.ssh/authorized_keys"
 
 # Re-copy public key if missing
-Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh devbox "cat >> ~/.ssh/authorized_keys"
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh cloudops "cat >> ~/.ssh/authorized_keys"
 ```
 
 #### Problem: Connection timeout
@@ -418,7 +418,7 @@ Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | ssh devbox "cat >> ~/.ssh/aut
 1. Increase timeout in SSH config:
 
 ```ssh-config
-Host devbox
+Host cloudops
     ConnectTimeout 30
     ServerAliveInterval 60
 ```
@@ -433,7 +433,7 @@ New-NetFirewallRule -DisplayName "SSH Outbound" -Direction Outbound -Protocol TC
 3. Restart VM networking:
 
 ```powershell
-multipass restart devbox
+multipass restart cloudops
 ```
 
 ### VS Code Server Issues
@@ -444,7 +444,7 @@ multipass restart devbox
 
 ```powershell
 # Connect to VM and remove old server
-ssh devbox "rm -rf ~/.vscode-server"
+ssh cloudops "rm -rf ~/.vscode-server"
 
 # Reconnect from VS Code
 ```
@@ -464,7 +464,7 @@ tar -xzf vscode-server.tar.gz -C ~/.vscode-server/bin/latest --strip-components=
 **Solutions:**
 
 1. Check extension compatibility: Some extensions only work locally
-2. Install extension on remote explicitly: Extensions panel > "Install in SSH: devbox"
+2. Install extension on remote explicitly: Extensions panel > "Install in SSH: cloudops"
 3. Reload window: `Ctrl+Shift+P` > "Developer: Reload Window"
 
 ### Network Issues
@@ -473,33 +473,33 @@ tar -xzf vscode-server.tar.gz -C ~/.vscode-server/bin/latest --strip-components=
 
 **Workaround 1: Set static IP**
 
-Edit `devbox-config-v2.yaml` before launching VM to include network configuration.
+Edit `cloudops-config-v2.yaml` before launching VM to include network configuration.
 
 **Workaround 2: Use dynamic connection**
 
 Update SSH config to use multipass command:
 
 ```ssh-config
-Host devbox
+Host cloudops
     HostName 172.29.10.254
-    User devbox
-    ProxyCommand multipass exec devbox -- nc -q0 localhost 22
+    User cloudops
+    ProxyCommand multipass exec cloudops -- nc -q0 localhost 22
 ```
 
 **Workaround 3: Create PowerShell script to update config**
 
 ```powershell
-# save as update-devbox-ip.ps1
-$ip = (multipass info devbox | Select-String "IPv4:" | ForEach-Object { $_.ToString().Split()[1] })
+# save as update-cloudops-ip.ps1
+$ip = (multipass info cloudops | Select-String "IPv4:" | ForEach-Object { $_.ToString().Split()[1] })
 $configPath = "$env:USERPROFILE\.ssh\config"
 (Get-Content $configPath) -replace 'HostName.*', "HostName $ip" | Set-Content $configPath
-Write-Host "Updated devbox IP to: $ip"
+Write-Host "Updated cloudops IP to: $ip"
 ```
 
 Run before connecting:
 
 ```powershell
-.\update-devbox-ip.ps1
+.\update-cloudops-ip.ps1
 ```
 
 ### Performance Issues
@@ -513,14 +513,14 @@ Run before connecting:
 
 ```powershell
 # Stop VM first
-multipass stop devbox
+multipass stop cloudops
 
 # Increase memory and CPUs
-multipass set local.devbox.memory=4G
-multipass set local.devbox.cpus=4
+multipass set local.cloudops.memory=4G
+multipass set local.cloudops.cpus=4
 
 # Restart
-multipass start devbox
+multipass start cloudops
 ```
 
 3. Use Remote - Containers for better isolation
@@ -535,15 +535,15 @@ Add multiple VMs to SSH config:
 
 ```ssh-config
 # Production-like environment
-Host devbox-prod
+Host cloudops-prod
     HostName 172.29.10.254
-    User devbox
+    User cloudops
     IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
 
 # Testing environment
-Host devbox-test
+Host cloudops-test
     HostName 172.29.10.255
-    User devbox
+    User cloudops
     IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
 ```
 
@@ -552,9 +552,9 @@ Host devbox-test
 Forward ports from VM to Windows:
 
 ```ssh-config
-Host devbox
+Host cloudops
     HostName 172.29.10.254
-    User devbox
+    User cloudops
     LocalForward 3000 localhost:3000  # Web server
     LocalForward 5432 localhost:5432  # PostgreSQL
     LocalForward 6379 localhost:6379  # Redis
@@ -591,20 +591,20 @@ ssh-add $env:USERPROFILE\.ssh\id_ed25519
 ssh-add -l
 ```
 
-### VS Code Workspace for DevBox
+### VS Code Workspace for cloudops
 
-Create a workspace file `devbox.code-workspace`:
+Create a workspace file `cloudops.code-workspace`:
 
 ```json
 {
     "folders": [
         {
             "name": "Work Projects",
-            "path": "vscode-remote://ssh-remote+devbox/home/devbox/code/work"
+            "path": "vscode-remote://ssh-remote+cloudops/home/cloudops/code/work"
         },
         {
             "name": "Personal Projects",
-            "path": "vscode-remote://ssh-remote+devbox/home/devbox/code/personal"
+            "path": "vscode-remote://ssh-remote+cloudops/home/cloudops/code/personal"
         }
     ],
     "settings": {
@@ -622,7 +622,7 @@ Open workspace: `File > Open Workspace from File`
 
 - [Official Multipass Documentation](https://documentation.ubuntu.com/multipass/stable/tutorial/)
 - [VS Code Remote SSH Documentation](https://code.visualstudio.com/docs/remote/ssh)
-- [DevBox Documentation](https://www.jetify.com/devbox/docs/)
+- [cloudops Documentation](https://www.jetify.com/cloudops/docs/)
 - [Cloud-init Documentation](https://cloudinit.readthedocs.io/en/latest/)
 
 ---
@@ -632,16 +632,16 @@ Open workspace: `File > Open Workspace from File`
 ```powershell
 # Multipass commands
 multipass list                    # List all VMs
-multipass info devbox            # Get VM info (including IP)
-multipass start devbox           # Start VM
-multipass stop devbox            # Stop VM
-multipass restart devbox         # Restart VM
-multipass shell devbox           # Open shell in VM
+multipass info cloudops            # Get VM info (including IP)
+multipass start cloudops           # Start VM
+multipass stop cloudops            # Stop VM
+multipass restart cloudops         # Restart VM
+multipass shell cloudops           # Open shell in VM
 
 # SSH commands
-ssh devbox                       # Connect to VM
-ssh devbox "command"             # Run command on VM
-ssh-copy-id devbox              # Copy SSH key to VM
+ssh cloudops                       # Connect to VM
+ssh cloudops "command"             # Run command on VM
+ssh-copy-id cloudops              # Copy SSH key to VM
 
 # VS Code commands (in Command Palette)
 Remote-SSH: Connect to Host      # Connect to remote
@@ -655,9 +655,9 @@ Remote-SSH: Kill VS Code Server  # Restart server on remote
 
 If you encounter issues not covered in this guide:
 
-1. Check multipass logs: `multipass exec devbox -- tail -f /var/log/cloud-init-output.log`
+1. Check multipass logs: `multipass exec cloudops -- tail -f /var/log/cloud-init-output.log`
 2. Check VS Code Remote logs: `Ctrl+Shift+P` > "Remote-SSH: Show Log"
-3. Review SSH verbose output: `ssh -vvv devbox`
+3. Review SSH verbose output: `ssh -vvv cloudops`
 
 ---
 

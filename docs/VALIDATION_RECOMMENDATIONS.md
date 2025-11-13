@@ -21,61 +21,59 @@ Validation testing revealed **2 critical bugs** that must be fixed immediately. 
 
 ### Fix #1: Correct write_files Permissions Schema
 
-**Problem**: Permissions using integers instead of strings causes write_files module to fail
+**Problem**: Multipass strips quotes from YAML values, causing cloud-init schema validation errors with `permissions` field
 
 **Impact**: No files created → cascading failures (no aliases, SSH keys, kernel tuning, Devbox)
 
-**Solution**:
+**Root Cause**:
+- Multipass processes YAML and strips quotes: `permissions: "0644"` → `permissions: 0644`
+- Cloud-init interprets `0644` as octal integer (420 in decimal)
+- Schema expects type `string`, receives type `integer`
+- All `write_files` entries fail validation
 
-**File**: `devbox-config-v2.yaml`
+**Solution**: ✅ IMPLEMENTED
 
-Find all occurrences of `permissions: 420` and change to `permissions: '0644'`
+**File**: `cloudops-config-v2.yaml`
 
-**Specific Changes**:
+1. **Remove all `permissions:` fields** from `write_files` entries
+2. **Add explicit `chmod` commands** in `runcmd` section
+
+**Implementation**:
 
 ```yaml
-# Around line 81 - .bashrc
 write_files:
-  - path: /home/devbox/.bashrc
-    owner: devbox:devbox
-    permissions: '0644'  # Changed from: permissions: 420
+  - path: /home/cloudops/.bashrc
+    # NO permissions field - causes Multipass YAML parsing issues
     content: |
       ...
 
-# Around line 333 - global .gitconfig
-  - path: /home/devbox/.gitconfig
-    owner: devbox:devbox
-    permissions: '0644'  # Changed from: permissions: 420
-    content: |
-      ...
-
-# Around line 635 - work .gitconfig
-  - path: /home/devbox/code/work/.gitconfig
-    owner: devbox:devbox
-    permissions: '0644'  # Changed from: permissions: 420
-    content: |
-      ...
-
-# Around line 664 - sysctl config
-  - path: /etc/sysctl.d/99-devbox.conf
-    owner: root:root
-    permissions: '0644'  # Changed from: permissions: 420
-    content: |
-      ...
-
-# Around line 672 - netplan config (if using bridged networking)
-  - path: /etc/netplan/99-devbox-bridge.yaml
-    owner: root:root
-    permissions: '0600'  # Changed from: permissions: 384 (should be '0600' for netplan)
-    content: |
-      ...
+runcmd:
+  - |
+    # Set file permissions explicitly (permissions field causes YAML 1.1 parsing issues)
+    echo "Setting file permissions..."
+    chmod 644 /home/cloudops/.bashrc
+    chmod 644 /home/cloudops/.bash_aliases
+    chmod 644 /home/cloudops/.gitconfig.template
+    chmod 644 /home/cloudops/code/work/.gitconfig.template
+    chmod 644 /etc/netplan/60-bridge.yaml
 ```
 
-**Verification Command**:
+**Why This Works**:
+- Removes problematic `permissions` field entirely
+- Uses explicit `chmod` after files are created
+- Avoids YAML 1.1 parsing ambiguity and Multipass quote-stripping
+- Tested and verified with `cloud-init schema --system` (passes validation)
+
+**Verification Commands**:
 ```bash
-# After fixing, search to ensure no integer permissions remain
-grep "permissions: [0-9]" devbox-config-v2.yaml
+# Verify no permissions fields remain in write_files
+grep -A 3 "write_files:" cloudops-config-v2.yaml | grep "permissions:"
 # Should return: no matches
+
+# Test with VM launch
+multipass launch 25.10 --name test --cloud-init cloudops-config-v2.yaml
+multipass exec test -- sudo cloud-init schema --system
+# Should return: "Valid schema user-data"
 ```
 
 **Estimated Time**: 5 minutes
@@ -90,7 +88,7 @@ grep "permissions: [0-9]" devbox-config-v2.yaml
 
 **Solution**:
 
-**File**: `devbox-config-v2.yaml`
+**File**: `cloudops-config-v2.yaml`
 
 **Change (around line 62)**:
 
@@ -139,38 +137,38 @@ packages:
 
 ```bash
 # 1. Delete existing test VM
-multipass delete test-devbox && multipass purge
+multipass delete test-cloudops && multipass purge
 
 # 2. Launch new test VM with fixed configuration
-multipass launch 25.10 --name test-devbox --cloud-init devbox-config-v2.yaml --cpus 1 --memory 1G --disk 5G
+multipass launch 25.10 --name test-cloudops --cloud-init cloudops-config-v2.yaml --cpus 1 --memory 1G --disk 5G
 
 # 3. Wait for cloud-init completion
-multipass exec test-devbox -- cloud-init status --wait
+multipass exec test-cloudops -- cloud-init status --wait
 
 # 4. Verify status is "done" (not "error")
-multipass exec test-devbox -- cloud-init status
+multipass exec test-cloudops -- cloud-init status
 
 # 5. Run validation checks:
 
 # Check write_files worked
-multipass exec test-devbox -- ls -la /etc/sysctl.d/99-devbox.conf
-multipass exec test-devbox -- wc -l /home/devbox/.bashrc  # Should be 600+ lines
-multipass exec test-devbox -- bash -c "grep -c '^alias' /home/devbox/.bashrc"  # Should be 100+
+multipass exec test-cloudops -- ls -la /etc/sysctl.d/99-cloudops.conf
+multipass exec test-cloudops -- wc -l /home/cloudops/.bashrc  # Should be 600+ lines
+multipass exec test-cloudops -- bash -c "grep -c '^alias' /home/cloudops/.bashrc"  # Should be 100+
 
 # Check SSH keys generated
-multipass exec test-devbox -- bash -c "ls -la /home/devbox/.ssh/ | grep id_rsa"
+multipass exec test-cloudops -- bash -c "ls -la /home/cloudops/.ssh/ | grep id_rsa"
 
 # Check kernel tuning applied
-multipass exec test-devbox -- sysctl vm.swappiness  # Should be 10, not 60
+multipass exec test-cloudops -- sysctl vm.swappiness  # Should be 10, not 60
 
-# Check Devbox installed
-multipass exec test-devbox -- which devbox
+# Check cloudops installed
+multipass exec test-cloudops -- which cloudops
 
 # Check packages installed
-multipass exec test-devbox -- dpkg -l | grep bind9-dnsutils
+multipass exec test-cloudops -- dpkg -l | grep bind9-dnsutils
 
 # 6. Clean up test VM
-multipass delete test-devbox && multipass purge
+multipass delete test-cloudops && multipass purge
 ```
 
 **Expected Results**:
@@ -178,7 +176,7 @@ multipass delete test-devbox && multipass purge
 - ✅ .bashrc: 600+ lines with 100+ aliases
 - ✅ SSH keys: id_rsa and id_ed25519_personal exist
 - ✅ vm.swappiness = 10
-- ✅ Devbox installed at /home/devbox/.local/bin/devbox
+- ✅ cloudops installed at /home/cloudops/.local/bin/cloudops
 - ✅ bind9-dnsutils package installed
 
 **Estimated Time**: 15 minutes
@@ -203,7 +201,7 @@ echo "Validating cloud-init configuration..."
 
 # Check if cloud-init is available (Linux only)
 if command -v cloud-init &> /dev/null; then
-    cloud-init schema --config-file devbox-config-v2.yaml --annotate
+    cloud-init schema --config-file cloudops-config-v2.yaml --annotate
     if [ $? -ne 0 ]; then
         echo "❌ ERROR: Cloud-init schema validation failed"
         echo "Fix the errors above before committing"
@@ -216,10 +214,10 @@ else
 fi
 
 # Check for integer permissions (common error)
-if grep -E "permissions: [0-9]+" devbox-config-v2.yaml | grep -v "#" > /dev/null; then
+if grep -E "permissions: [0-9]+" cloudops-config-v2.yaml | grep -v "#" > /dev/null; then
     echo "❌ ERROR: Found integer permissions (should be quoted strings)"
     echo "Example: permissions: 420 → permissions: '0644'"
-    grep -n -E "permissions: [0-9]+" devbox-config-v2.yaml | grep -v "#"
+    grep -n -E "permissions: [0-9]+" cloudops-config-v2.yaml | grep -v "#"
     exit 1
 fi
 
@@ -247,18 +245,18 @@ chmod +x .git/hooks/pre-commit
 
 **Implementation**:
 
-Create `scripts/test-devbox-config.sh`:
+Create `scripts/test-cloudops-config.sh`:
 
 ```bash
 #!/bin/bash
-# Automated test script for devbox-config-v2.yaml
+# Automated test script for cloudops-config-v2.yaml
 
 set -euo pipefail
 
-VM_NAME="test-devbox"
-CONFIG_FILE="devbox-config-v2.yaml"
+VM_NAME="test-cloudops"
+CONFIG_FILE="cloudops-config-v2.yaml"
 
-echo "=== DevBox Configuration Validation Script ==="
+echo "=== cloudops Configuration Validation Script ==="
 echo
 
 # Cleanup function
@@ -309,7 +307,7 @@ echo
 echo "Level 3: Security Validation"
 
 # Check SSH keys
-if ! multipass exec "$VM_NAME" -- test -f /home/devbox/.ssh/id_rsa; then
+if ! multipass exec "$VM_NAME" -- test -f /home/cloudops/.ssh/id_rsa; then
     echo "❌ FAIL: SSH keys not generated"
     exit 1
 fi
@@ -332,19 +330,19 @@ echo
 echo "Level 5: Functional Validation"
 
 # Check aliases
-ALIAS_COUNT=$(multipass exec "$VM_NAME" -- bash -c "grep -c '^alias' /home/devbox/.bashrc")
+ALIAS_COUNT=$(multipass exec "$VM_NAME" -- bash -c "grep -c '^alias' /home/cloudops/.bashrc")
 if [ "$ALIAS_COUNT" -lt "50" ]; then
     echo "❌ FAIL: Insufficient aliases ($ALIAS_COUNT, expected 100+)"
     exit 1
 fi
 echo "✅ Aliases loaded ($ALIAS_COUNT aliases)"
 
-# Check Devbox
-if ! multipass exec "$VM_NAME" -- which devbox > /dev/null 2>&1; then
-    echo "❌ FAIL: Devbox not installed"
+# Check cloudops
+if ! multipass exec "$VM_NAME" -- which cloudops > /dev/null 2>&1; then
+    echo "❌ FAIL: cloudops not installed"
     exit 1
 fi
-echo "✅ Devbox installed"
+echo "✅ cloudops installed"
 
 # All tests passed
 echo
@@ -357,19 +355,19 @@ echo "- Cloud-init: COMPLETE"
 echo "- SSH keys: GENERATED"
 echo "- Kernel tuning: APPLIED"
 echo "- Aliases: LOADED ($ALIAS_COUNT)"
-echo "- Devbox: INSTALLED"
+echo "- cloudops: INSTALLED"
 
 exit 0
 ```
 
 Make executable:
 ```bash
-chmod +x scripts/test-devbox-config.sh
+chmod +x scripts/test-cloudops-config.sh
 ```
 
 **Usage**:
 ```bash
-./scripts/test-devbox-config.sh
+./scripts/test-cloudops-config.sh
 ```
 
 **Benefits**:
@@ -396,11 +394,11 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'devbox-config-v2.yaml'
+      - 'cloudops-config-v2.yaml'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'devbox-config-v2.yaml'
+      - 'cloudops-config-v2.yaml'
 
 jobs:
   validate:
@@ -417,11 +415,11 @@ jobs:
 
       - name: Validate YAML Schema
         run: |
-          cloud-init schema --config-file devbox-config-v2.yaml --annotate
+          cloud-init schema --config-file cloudops-config-v2.yaml --annotate
 
       - name: Check for Integer Permissions
         run: |
-          if grep -E "permissions: [0-9]+" devbox-config-v2.yaml | grep -v "#"; then
+          if grep -E "permissions: [0-9]+" cloudops-config-v2.yaml | grep -v "#"; then
             echo "ERROR: Found integer permissions (should be quoted strings)"
             exit 1
           fi
@@ -429,7 +427,7 @@ jobs:
 
       - name: Validate YAML Syntax with Python
         run: |
-          python3 -c "import yaml; yaml.safe_load(open('devbox-config-v2.yaml'))"
+          python3 -c "import yaml; yaml.safe_load(open('cloudops-config-v2.yaml'))"
           echo "✅ YAML syntax valid"
 
       - name: Summary
@@ -479,7 +477,7 @@ To test on different Ubuntu versions:
 
 \`\`\`bash
 # Replace 25.10 with desired version
-multipass launch 24.04 --name test-devbox --cloud-init devbox-config-v2.yaml
+multipass launch 24.04 --name test-cloudops --cloud-init cloudops-config-v2.yaml
 \`\`\`
 
 If you encounter package installation errors, check `/var/log/cloud-init.log` for package names that need updating.
@@ -504,9 +502,9 @@ configs/
   ├── git-setup.yaml        # Git dual-identity
   ├── aliases.yaml          # Bash aliases
   ├── kernel-tuning.yaml    # sysctl configuration
-  └── devbox.yaml           # Devbox installation
+  └── cloudops.yaml           # cloudops installation
 
-devbox-config-v2.yaml       # Main config with #include
+cloudops-config-v2.yaml       # Main config with #include
 ```
 
 **Main Config**:
@@ -517,7 +515,7 @@ devbox-config-v2.yaml       # Main config with #include
   - configs/git-setup.yaml
   - configs/aliases.yaml
   - configs/kernel-tuning.yaml
-  - configs/devbox.yaml
+  - configs/cloudops.yaml
 ```
 
 **Benefits**:
@@ -539,7 +537,7 @@ devbox-config-v2.yaml       # Main config with #include
 - Verify all expected files created
 - Check SSH keys present
 - Verify aliases loaded
-- Check Devbox functional
+- Check cloudops functional
 - Test Git dual-identity
 - Verify kernel tuning
 - Generate report
@@ -547,10 +545,10 @@ devbox-config-v2.yaml       # Main config with #include
 **Usage**:
 ```bash
 # From within VM
-/home/devbox/health-check.sh
+/home/cloudops/health-check.sh
 
 # From host
-multipass exec devbox -- /home/devbox/health-check.sh
+multipass exec cloudops -- /home/cloudops/health-check.sh
 ```
 
 **Estimated Time**: 2 hours
@@ -577,8 +575,8 @@ export GIT_USER_EMAIL="john@example.com"
 export GIT_WORK_NAME="John Doe (Work)"
 export GIT_WORK_EMAIL="john@company.com"
 
-./scripts/process-template.sh devbox-config-v2.yaml > my-devbox-config.yaml
-multipass launch 25.10 --name my-devbox --cloud-init my-devbox-config.yaml
+./scripts/process-template.sh cloudops-config-v2.yaml > my-cloudops-config.yaml
+multipass launch 25.10 --name my-cloudops --cloud-init my-cloudops-config.yaml
 ```
 
 **Benefits**:
@@ -600,7 +598,7 @@ multipass launch 25.10 --name my-devbox --cloud-init my-devbox-config.yaml
 - [ ] Verify all tests pass (cloud-init status: done)
 - [ ] Verify SSH keys generated
 - [ ] Verify aliases loaded (100+)
-- [ ] Verify Devbox installed
+- [ ] Verify cloudops installed
 - [ ] Verify kernel tuning applied
 
 ### This Week
