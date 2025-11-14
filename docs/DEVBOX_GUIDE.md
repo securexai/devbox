@@ -3,6 +3,8 @@
 Complete guide to using Jetify Devbox for isolated, reproducible development
 environments in your cloudops Multipass VM.
 
+**Last Updated**: 2025-11-14
+
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -1404,10 +1406,13 @@ A: Yes. GitHub Actions example:
 
 ### Related Documentation
 
-- **[Multipass Best Practices](MULTIPASS_BEST_PRACTICES.md)**: Complete guide
-  to Multipass
-- **[VS Code Setup](VSCODE_SETUP.md)**: Remote development configuration
-- **[Optimization Summary](OPTIMIZATION_SUMMARY.md)**: VM performance details
+- **[Main README](../README.md)** - Project overview and quick start
+- **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Devbox and Nix troubleshooting
+- **[VS Code Setup](VSCODE_SETUP.md)** - Remote development configuration
+- **[Multipass Best Practices](MULTIPASS_BEST_PRACTICES.md)** - Production deployment
+- **[Migration Guide](../MIGRATION.md)** - Upgrading between versions
+- **[Changelog](../CHANGELOG.md)** - Version history including Devbox integration
+- **[Optimization Summary](OPTIMIZATION_SUMMARY.md)** - VM performance details
 
 ## Next Steps
 
@@ -1420,3 +1425,9 @@ Now that you understand Devbox, try:
 5. **Join community**: Discord for questions and best practices
 
 **Happy developing with Devbox!**
+
+---
+
+**Document Version**: 1.0
+**Last Updated**: 2025-11-14
+**Maintained by**: CloudOps Development Team

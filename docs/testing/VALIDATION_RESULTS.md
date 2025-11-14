@@ -1,3 +1,15 @@
+> **📜 HISTORICAL DOCUMENT**
+>
+> This validation report represents testing performed on **2025-11-12** against an earlier version of the configuration.
+>
+> **Status**: ✅ **ALL ISSUES RESOLVED**
+>
+> The critical issues described in this document (permissions schema error, dnsutils package name) have been fixed in the current configuration as of 2025-11-14.
+>
+> This document is preserved for historical reference and to document the testing methodology used.
+
+---
+
 # Multipass Cloud-Init Configuration Validation Results
 
 **Test Execution Date**: 2025-11-12
