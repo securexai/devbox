@@ -44,7 +44,9 @@ users:
     shell: /bin/bash
     groups: [adm, cdrom, dip, plugdev, sudo]
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
-    lock_passwd: false
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM9mMEB83S3l0KQEQJrnfMQRX5JEvuKgh5oF4IfbElOr github.com.valium091@passmail.com
 
 # Package management
 # Cloud-init execution order: 1) update repos, 2) upgrade existing, 3) install new
@@ -60,7 +62,6 @@ packages:
   - git                              # Version control system
   - gnupg                            # GPG encryption and signing tools
   - htop                             # Enhanced process viewer
-  - jq                               # JSON processor for scripts
   - language-pack-en                 # English language support for system locales
   - locales                          # Locale data files for internationalization
   - lsb-release                      # Linux Standard Base version reporting

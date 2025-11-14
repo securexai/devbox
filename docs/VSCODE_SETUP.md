@@ -36,8 +36,11 @@ code --version
 # Verify multipass VM is running
 multipass list
 
-# Test SSH connection (replace IP with your VM's IP)
-ssh cloudops@172.29.10.254
+# Get VM IP address first
+multipass info cloudops | grep IPv4
+
+# Test SSH connection (replace <VM-IP> with your actual VM IP)
+ssh cloudops@<VM-IP>
 ```
 
 ---
@@ -46,14 +49,20 @@ ssh cloudops@172.29.10.254
 
 **For users who want to connect immediately:**
 
-1. Open VS Code
-2. Press `F1` or `Ctrl+Shift+P`
-3. Type "Remote-SSH: Connect to Host"
-4. Enter: `ssh cloudops@172.29.10.254` (use your VM's IP)
-5. Select "Linux" as the remote platform
-6. Enter your password when prompted
-7. Wait for VS Code server to install (first time only)
-8. Open a folder: `File > Open Folder` → `/home/cloudops`
+1. Get your VM IP address:
+   ```powershell
+   multipass info cloudops | grep IPv4
+   # Example output: IPv4: 172.29.1.216
+   ```
+
+2. Open VS Code
+3. Press `F1` or `Ctrl+Shift+P`
+4. Type "Remote-SSH: Connect to Host"
+5. Enter: `ssh cloudops@<VM-IP>` (replace `<VM-IP>` with the IP from step 1)
+6. Select "Linux" as the remote platform
+7. Enter your password when prompted
+8. Wait for VS Code server to install (first time only)
+9. Open a folder: `File > Open Folder` → `/home/cloudops`
 
 **Note:** This works but requires password entry each time. For a better experience, follow the detailed setup below.
 
@@ -90,16 +99,16 @@ icacls "$env:USERPROFILE\.ssh" /grant:r "$env:USERNAME:(OI)(CI)F"
 multipass info cloudops
 ```
 
-Look for the IPv4 address in the output (e.g., `172.29.10.254`).
+Look for the IPv4 address in the output (e.g., `172.29.1.216`).
 
 #### Step 1.3: Create SSH config file
 
-Create or edit `C:\Users\s.tapia\.ssh\config`:
+Create or edit `C:\Users\<YOUR-USERNAME>\.ssh\config` (or `~/.ssh/config` on Linux/macOS):
 
 ```ssh-config
 # Multipass cloudops VM
 Host cloudops
-    HostName 172.29.10.254
+    HostName <VM-IP>    # Replace with your VM's IP from step 1.2
     User cloudops
     Port 22
     ForwardAgent yes
@@ -110,10 +119,17 @@ Host cloudops
 # Alternative: Use multipass command to get IP dynamically
 # Note: This requires multipass in PATH
 Host cloudops-auto
-    HostName 172.29.10.254
     User cloudops
     Port 22
     ProxyCommand multipass exec cloudops -- nc -q0 localhost 22
+```
+
+**Example** (replace IP with your actual VM IP):
+```ssh-config
+Host cloudops
+    HostName 172.29.1.216
+    User cloudops
+    Port 22
 ```
 
 **Configuration explanation:**
@@ -163,8 +179,8 @@ ssh-keygen -t rsa -b 4096 -C "vscode-cloudops-connection"
 # Install OpenSSH client features if not available
 Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
 
-# Copy the key
-ssh-copy-id -i $env:USERPROFILE\.ssh\id_ed25519.pub cloudops@172.29.10.254
+# Copy the key (replace <VM-IP> with your VM's IP)
+ssh-copy-id -i $env:USERPROFILE\.ssh\id_ed25519.pub cloudops@<VM-IP>
 ```
 
 **Option B: Manual copy (recommended for Windows)**
@@ -173,8 +189,8 @@ ssh-copy-id -i $env:USERPROFILE\.ssh\id_ed25519.pub cloudops@172.29.10.254
 # Read your public key
 Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | Set-Clipboard
 
-# Connect to VM and add the key
-ssh cloudops@172.29.10.254
+# Connect to VM and add the key (replace <VM-IP> with your VM's IP)
+ssh cloudops@<VM-IP>
 
 # On the VM, run:
 mkdir -p ~/.ssh
@@ -187,9 +203,9 @@ exit
 **Option C: One-liner (PowerShell)**
 
 ```powershell
-# Copy key in one command
+# Copy key in one command (replace <VM-IP> with your VM's IP)
 $pubKey = Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub
-ssh cloudops@172.29.10.254 "mkdir -p ~/.ssh && echo '$pubKey' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
+ssh cloudops@<VM-IP> "mkdir -p ~/.ssh && echo '$pubKey' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
 ```
 
 #### Step 2.3: Test passwordless authentication
@@ -203,14 +219,14 @@ ssh cloudops
 
 #### Step 2.4: Update SSH config to use the key
 
-Edit `C:\Users\s.tapia\.ssh\config` and add the `IdentityFile` line:
+Edit `~/.ssh/config` and add the `IdentityFile` line:
 
 ```ssh-config
 Host cloudops
-    HostName 172.29.10.254
+    HostName <VM-IP>    # Your VM's IP address
     User cloudops
     Port 22
-    IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
+    IdentityFile ~/.ssh/id_ed25519
     ForwardAgent yes
     ServerAliveInterval 60
     ServerAliveCountMax 3
@@ -536,15 +552,15 @@ Add multiple VMs to SSH config:
 ```ssh-config
 # Production-like environment
 Host cloudops-prod
-    HostName 172.29.10.254
+    HostName <PROD-VM-IP>    # Production VM IP
     User cloudops
-    IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
+    IdentityFile ~/.ssh/id_ed25519
 
 # Testing environment
 Host cloudops-test
-    HostName 172.29.10.255
+    HostName <TEST-VM-IP>    # Testing VM IP
     User cloudops
-    IdentityFile C:\Users\s.tapia\.ssh\id_ed25519
+    IdentityFile ~/.ssh/id_ed25519
 ```
 
 ### Port Forwarding
@@ -553,7 +569,7 @@ Forward ports from VM to Windows:
 
 ```ssh-config
 Host cloudops
-    HostName 172.29.10.254
+    HostName <VM-IP>    # Your VM's IP address
     User cloudops
     LocalForward 3000 localhost:3000  # Web server
     LocalForward 5432 localhost:5432  # PostgreSQL
@@ -622,7 +638,7 @@ Open workspace: `File > Open Workspace from File`
 
 - [Official Multipass Documentation](https://documentation.ubuntu.com/multipass/stable/tutorial/)
 - [VS Code Remote SSH Documentation](https://code.visualstudio.com/docs/remote/ssh)
-- [cloudops Documentation](https://www.jetify.com/cloudops/docs/)
+- [Devbox Documentation](https://www.jetify.com/devbox/docs/)
 - [Cloud-init Documentation](https://cloudinit.readthedocs.io/en/latest/)
 
 ---
@@ -651,15 +667,29 @@ Remote-SSH: Kill VS Code Server  # Restart server on remote
 
 ---
 
+## Related Documents
+
+- **[Main README](../README.md)** - Project overview and quick start
+- **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Comprehensive troubleshooting for all components
+- **[Devbox Integration Guide](DEVBOX_GUIDE.md)** - Nix and Devbox development environments
+- **[Multipass Best Practices](MULTIPASS_BEST_PRACTICES.md)** - Production deployment and security
+- **[Migration Guide](../MIGRATION.md)** - Upgrading between versions
+- **[Changelog](../CHANGELOG.md)** - Version history and release notes
+
+---
+
 ## Support
 
 If you encounter issues not covered in this guide:
 
-1. Check multipass logs: `multipass exec cloudops -- tail -f /var/log/cloud-init-output.log`
-2. Check VS Code Remote logs: `Ctrl+Shift+P` > "Remote-SSH: Show Log"
-3. Review SSH verbose output: `ssh -vvv cloudops`
+1. Check [Troubleshooting Guide](TROUBLESHOOTING.md) first
+2. Check multipass logs: `multipass exec cloudops -- tail -f /var/log/cloud-init-output.log`
+3. Check VS Code Remote logs: `Ctrl+Shift+P` > "Remote-SSH: Show Log"
+4. Review SSH verbose output: `ssh -vvv cloudops`
+5. Open an issue on GitHub with logs and configuration
 
 ---
 
-**Last updated:** 2025-11-11
-**Tested with:** VS Code 1.95+, Multipass 1.14+, Windows 11
+**Document Version:** 1.1
+**Last Updated:** 2025-11-14
+**Tested with:** VS Code 1.95+, Multipass 1.16+, Windows 11, Ubuntu 25.10
