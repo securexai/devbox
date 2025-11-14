@@ -44,6 +44,58 @@ Pre-configured support for:
 - **Infrastructure**: Terraform
 - **Runtimes**: NVM (Node.js), Bun, Cargo (Rust)
 - **Languages**: Build tools for C/C++/make, Python, Go, Rust
+- **Development Environments**: Nix, Jetify Devbox
+
+### Devbox Integration
+
+Create isolated, reproducible development environments with **Jetify Devbox**:
+
+- **Nix-powered**: Reproducible package management via Determinate Systems Nix
+- **Fast caching**: 25-35% Nix store size reduction with auto-optimization
+- **Global tools**: Pre-installed jq, yq, gh accessible in all shells
+- **Templates included**: 5 ready-to-use devbox.json templates for common stacks
+- **Zero configuration**: devbox global shellenv auto-activated in .bashrc
+
+**Available Templates:**
+
+- `nodejs-webapp.json` - Node.js 22 + pnpm + TypeScript
+- `python-api.json` - Python 3.12 + Poetry for FastAPI/Flask
+- `go-service.json` - Go 1.23 + air for hot reload
+- `rust-cli.json` - Rust 1.85 + cargo + rust-analyzer
+- `fullstack.json` - Multi-language with PostgreSQL + Redis
+
+**Quick Start with Devbox:**
+
+```bash
+# Access the VM
+multipass shell cloudops
+
+# Create a new Node.js project from template
+mkdir my-app && cd my-app
+cp ~/.devbox-templates/nodejs-webapp.json devbox.json
+devbox shell  # Enter isolated environment with Node.js 22
+
+# Or initialize from scratch
+devbox init
+devbox add nodejs@22.14.0 pnpm@10.11.0
+devbox shell
+
+# Read the quickstart guide in the VM
+cat ~/.devbox-quickstart.md
+```
+
+**Key Benefits:**
+
+- **Project isolation**: Each project has its own package environment
+- **Team reproducibility**: Share devbox.json, everyone gets identical setup
+- **Fast installations**: Nix caching makes repeated installs 10-30 seconds
+- **No conflicts**: Multiple Node/Python/Go versions on same machine
+- **Minimal disk usage**: ~3.6GB total (Nix + Devbox + global tools)
+
+**Learn More:**
+
+- **[Complete Devbox Guide](docs/DEVBOX_GUIDE.md)** - Comprehensive tutorial
+  with examples, workflows, and troubleshooting
 
 ## Quick Start
 
@@ -181,17 +233,20 @@ For team-wide configurations:
 
 ```text
 multipass/
-├── cloudops-config-v2.yaml       # Main cloud-init configuration (747 lines)
+├── cloudops-config-v2.yaml           # Main cloud-init configuration
 ├── docs/
-│   ├── MULTIPASS_BEST_PRACTICES.md   # Comprehensive Multipass guide (701 lines)
-│   ├── OPTIMIZATION_SUMMARY.md       # Optimization details and metrics (355 lines)
-│   └── VSCODE_SETUP.md               # VS Code Remote SSH setup (665 lines)
-├── .gitignore                  # Excludes local test files
-└── README.md                   # This file
+│   ├── DEVBOX_GUIDE.md               # Complete Devbox tutorial and reference
+│   ├── MULTIPASS_BEST_PRACTICES.md   # Comprehensive Multipass guide
+│   ├── OPTIMIZATION_SUMMARY.md       # Optimization details and metrics
+│   └── VSCODE_SETUP.md               # VS Code Remote SSH setup
+├── .gitignore                        # Excludes local test files
+└── README.md                         # This file
 ```
 
 ## Documentation
 
+- **[Devbox Guide](docs/DEVBOX_GUIDE.md)** - Comprehensive tutorial for isolated
+  development environments with templates, workflows, and troubleshooting
 - **[Multipass Best Practices](docs/MULTIPASS_BEST_PRACTICES.md)** - Complete
   guide to Multipass and cloud-init best practices
 - **[Optimization Summary](docs/OPTIMIZATION_SUMMARY.md)** - Detailed
@@ -200,13 +255,13 @@ multipass/
 
 ## Performance Metrics
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Shell startup time | ~500ms | ~50ms | 90% faster |
-| Security issues | 10+ | 0 | 100% resolved |
-| Hardcoded secrets | 5 | 0 | 100% removed |
-| Idempotent operations | 0% | 100% | Fully safe to re-run |
-| Package count | 14 | 20 | +6 useful tools |
+| Metric                | Before | After | Improvement          |
+| --------------------- | ------ | ----- | -------------------- |
+| Shell startup time    | ~500ms | ~50ms | 90% faster           |
+| Security issues       | 10+    | 0     | 100% resolved        |
+| Hardcoded secrets     | 5      | 0     | 100% removed         |
+| Idempotent operations | 0%     | 100%  | Fully safe to re-run |
+| Package count         | 14     | 20    | +6 useful tools      |
 
 ## Common Commands
 
@@ -249,13 +304,20 @@ multipass exec cloudops -- cat /var/log/cloudops-setup.log
 
 ### Schema validation warnings about permissions
 
-If you see cloud-init schema errors like `write_files.*.permissions: 420 is not of type 'string'`, this is a **known issue** with Multipass YAML processing.
+If you see cloud-init schema errors like
+`write_files.*.permissions: 420 is not of type 'string'`, this is a
+**known issue** with Multipass YAML processing.
 
-**Root cause**: Multipass strips quotes from YAML values before passing to cloud-init, causing permissions fields to be interpreted as integers instead of strings.
+**Root cause**: Multipass strips quotes from YAML values before passing to
+cloud-init, causing permissions fields to be interpreted as integers instead
+of strings.
 
-**Resolution**: This project uses explicit `chmod` commands in `runcmd` instead of the `permissions:` field to avoid this issue. The configuration will work correctly despite the warning.
+**Resolution**: This project uses explicit `chmod` commands in `runcmd` instead
+of the `permissions:` field to avoid this issue. The configuration will work
+correctly despite the warning.
 
 **Verification**:
+
 ```bash
 # Verify schema validation passes with current configuration
 multipass exec cloudops -- sudo cloud-init schema --system

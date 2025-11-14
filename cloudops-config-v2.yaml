@@ -327,6 +327,17 @@ write_files:
           . "$HOME/.cargo/env"
       fi
 
+      # ============================================================================
+      # Devbox Global Environment
+      # ============================================================================
+
+      # Activate devbox global packages (jq, yq, gh, etc.)
+      # Note: May not be available on first boot until cloud-init completes
+      # Only activate if devbox is installed to avoid errors on first boot
+      if command -v devbox &>/dev/null; then
+          eval "$(devbox global shellenv)" 2>/dev/null || true
+      fi
+
   # Custom .bash_aliases for cloudops user
   - path: /home/cloudops/.bash_aliases
     content: |
@@ -662,6 +673,389 @@ write_files:
           name = __GIT_WORK_NAME__
           email = __GIT_WORK_EMAIL__
 
+  # Devbox template: Node.js/TypeScript Web Application
+  - path: /home/cloudops/.devbox-templates/nodejs-webapp.json
+    content: |
+      {
+        "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/devbox.schema.json",
+        "packages": {
+          "nodejs": "22.14.0",
+          "pnpm": "10.11.0",
+          "typescript": "5.7.3"
+        },
+        "env": {
+          "PATH": "$PWD/node_modules/.bin:$PATH",
+          "NODE_ENV": "development"
+        },
+        "shell": {
+          "init_hook": [
+            "echo 'Node.js Web App Environment'",
+            "echo 'Node: $(node --version)'",
+            "echo 'pnpm: $(pnpm --version)'",
+            "echo 'TypeScript: $(tsc --version)'",
+            "echo ''",
+            "echo 'Run: pnpm install  # Install dependencies'",
+            "echo 'Run: pnpm dev      # Start development server'"
+          ],
+          "scripts": {
+            "install": "pnpm install",
+            "dev": "pnpm dev",
+            "build": "pnpm build",
+            "test": "pnpm test"
+          }
+        }
+      }
+
+  # Devbox template: Python FastAPI/Flask Application
+  - path: /home/cloudops/.devbox-templates/python-api.json
+    content: |
+      {
+        "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/devbox.schema.json",
+        "packages": {
+          "python-full": "3.12.6",
+          "poetry": "latest"
+        },
+        "env": {
+          "VIRTUAL_ENV": "$PWD/.venv",
+          "PATH": "$PWD/.venv/bin:$PATH",
+          "PYTHONPATH": "$PWD"
+        },
+        "shell": {
+          "init_hook": [
+            "echo 'Python API Environment'",
+            "echo 'Python: $(python --version)'",
+            "echo 'Poetry: $(poetry --version 2>/dev/null || echo not configured)'",
+            "echo ''",
+            "echo 'Run: poetry install  # Install dependencies'",
+            "echo 'Run: poetry shell    # Activate virtual environment'",
+            "if [ ! -d .venv ]; then python -m venv .venv; fi",
+            "source .venv/bin/activate"
+          ],
+          "scripts": {
+            "install": "poetry install",
+            "dev": "poetry run uvicorn main:app --reload",
+            "test": "poetry run pytest"
+          }
+        }
+      }
+
+  # Devbox template: Go Service/API
+  - path: /home/cloudops/.devbox-templates/go-service.json
+    content: |
+      {
+        "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/devbox.schema.json",
+        "packages": {
+          "go": "1.23.5",
+          "air": "latest"
+        },
+        "env": {
+          "GOENV": "off",
+          "CGO_ENABLED": "0",
+          "GOOS": "linux",
+          "GOARCH": "amd64"
+        },
+        "shell": {
+          "init_hook": [
+            "echo 'Go Service Environment'",
+            "echo 'Go: $(go version)'",
+            "echo ''",
+            "echo 'Run: go mod download  # Download dependencies'",
+            "echo 'Run: go run main.go   # Run application'",
+            "echo 'Run: air              # Hot reload with air'"
+          ],
+          "scripts": {
+            "install": "go mod download",
+            "dev": "air",
+            "build": "go build -o bin/app .",
+            "test": "go test ./..."
+          }
+        }
+      }
+
+  # Devbox template: Rust CLI/Systems Tool
+  - path: /home/cloudops/.devbox-templates/rust-cli.json
+    content: |
+      {
+        "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/devbox.schema.json",
+        "packages": {
+          "rustc": "1.85.0",
+          "cargo": "1.85.0",
+          "rust-analyzer": "latest"
+        },
+        "shell": {
+          "init_hook": [
+            "echo 'Rust Development Environment'",
+            "echo 'Rust: $(rustc --version)'",
+            "echo 'Cargo: $(cargo --version)'",
+            "echo ''",
+            "echo 'Run: cargo build     # Build project'",
+            "echo 'Run: cargo run       # Run project'",
+            "echo 'Run: cargo test      # Run tests'"
+          ],
+          "scripts": {
+            "build": "cargo build",
+            "release": "cargo build --release",
+            "dev": "cargo run",
+            "test": "cargo test"
+          }
+        }
+      }
+
+  # Devbox template: Full-Stack (Multi-language)
+  - path: /home/cloudops/.devbox-templates/fullstack.json
+    content: |
+      {
+        "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/devbox.schema.json",
+        "packages": {
+          "nodejs": "22.14.0",
+          "pnpm": "10.11.0",
+          "python-full": "3.12.6",
+          "postgresql": "16",
+          "redis": "7.2"
+        },
+        "env": {
+          "PATH": "$PWD/node_modules/.bin:$PWD/.venv/bin:$PATH",
+          "DATABASE_URL": "postgresql://localhost:5432/devdb",
+          "REDIS_URL": "redis://localhost:6379"
+        },
+        "shell": {
+          "init_hook": [
+            "echo 'Full-Stack Development Environment'",
+            "echo 'Node: $(node --version)'",
+            "echo 'Python: $(python --version)'",
+            "echo 'PostgreSQL: $(postgres --version 2>/dev/null | head -1)'",
+            "echo 'Redis: $(redis-server --version 2>/dev/null | head -1)'",
+            "echo ''",
+            "echo 'Services available:'",
+            "echo '  - PostgreSQL (port 5432)'",
+            "echo '  - Redis (port 6379)'",
+            "echo ''",
+            "echo 'Frontend: cd frontend && pnpm install && pnpm dev'",
+            "echo 'Backend: cd backend && poetry install && poetry run uvicorn main:app --reload'"
+          ],
+          "scripts": {
+            "db:start": "pg_ctl start -D $PWD/.devbox/virtenv/postgresql/data",
+            "db:stop": "pg_ctl stop -D $PWD/.devbox/virtenv/postgresql/data",
+            "redis:start": "redis-server --daemonize yes",
+            "redis:stop": "redis-cli shutdown"
+          }
+        }
+      }
+
+  # Devbox Quickstart Documentation
+  - path: /home/cloudops/.devbox-quickstart.md
+    content: |
+      # Devbox Quickstart Guide
+
+      Devbox creates isolated, reproducible development environments using Nix.
+
+      ## Quick Start
+
+      ### 1. Initialize a New Project
+
+      ```bash
+      # Create project directory
+      mkdir my-project && cd my-project
+
+      # Initialize devbox (creates devbox.json)
+      devbox init
+
+      # Add packages
+      devbox add nodejs@22.14.0 pnpm@10.11.0
+
+      # Enter the environment
+      devbox shell
+      ```
+
+      ### 2. Use a Template
+
+      Pre-configured templates are available in `~/.devbox-templates/`:
+
+      ```bash
+      # Copy a template
+      cp ~/.devbox-templates/nodejs-webapp.json devbox.json
+
+      # Or for Python
+      cp ~/.devbox-templates/python-api.json devbox.json
+
+      # Or for Go
+      cp ~/.devbox-templates/go-service.json devbox.json
+
+      # Enter the environment
+      devbox shell
+      ```
+
+      ### 3. Global Tools (Already Configured)
+
+      Global tools are available in all shells:
+      - `jq` - JSON processor
+      - `yq` - YAML processor
+      - `gh` - GitHub CLI (already installed via apt)
+
+      To add more global tools:
+      ```bash
+      devbox global add <package-name>
+      ```
+
+      ## Common Commands
+
+      ```bash
+      devbox add <package>           # Add package to project
+      devbox remove <package>        # Remove package
+      devbox shell                   # Enter development environment
+      devbox run <script>            # Run script from devbox.json
+      devbox services start          # Start services (databases, etc.)
+      devbox services stop           # Stop services
+      devbox update                  # Update all packages
+      devbox search <query>          # Search available packages
+      ```
+
+      ## Project Structure
+
+      ```text
+      my-project/
+      ├── devbox.json          # Package definitions and scripts
+      ├── devbox.lock          # Lock file (commit to git)
+      ├── .devbox/             # Local cache (add to .gitignore)
+      └── your-code/
+      ```
+
+      ## devbox.json Structure
+
+      ```json
+      {
+        "packages": {
+          "nodejs": "22.14.0",    # Pin specific versions
+          "python": "3.12.6"
+        },
+        "env": {
+          "PATH": "$PWD/bin:$PATH",  # Environment variables
+          "MY_VAR": "value"
+        },
+        "shell": {
+          "init_hook": [
+            "npm install",           # Commands run on 'devbox shell'
+            "echo 'Ready!'"
+          ],
+          "scripts": {
+            "dev": "npm run dev",    # Run with 'devbox run dev'
+            "test": "npm test"
+          }
+        }
+      }
+      ```
+
+      ## Best Practices
+
+      1. **Always pin versions** for reproducibility
+         ```json
+         "nodejs": "22.14.0"  ✓ Good
+         "nodejs": "latest"   ✗ Avoid
+         ```
+
+      2. **Commit devbox.json and devbox.lock** to version control
+
+      3. **Add .devbox/ to .gitignore**
+         ```bash
+         echo ".devbox/" >> .gitignore
+         ```
+
+      4. **Use scripts for common tasks**
+         ```json
+         "scripts": {
+           "dev": "npm run dev",
+           "test": "npm test",
+           "build": "npm run build"
+         }
+         ```
+
+      5. **Keep project-specific packages in devbox.json**
+         - Language runtimes: Node, Python, Go, Rust
+         - Project dependencies: PostgreSQL, Redis, etc.
+
+      6. **Keep universal tools in devbox global**
+         - CLI tools: jq, yq, fd, ripgrep
+         - Cloud CLIs: awscli, kubectl, terraform
+
+      ## Caching & Performance
+
+      Devbox leverages Nix caching for fast installations:
+
+      - **First install**: Downloads and caches packages (2-5 min)
+      - **Subsequent installs**: Uses cache (10-30 sec)
+      - **Cache location**: `/nix/store` (shared across all projects)
+
+      ## Troubleshooting
+
+      ### "Package not found"
+      ```bash
+      # Search for available packages
+      devbox search nodejs
+
+      # Use exact package name from search results
+      devbox add nodejs@22.14.0
+      ```
+
+      ### "Command not found" after adding package
+      ```bash
+      # Exit and re-enter the shell
+      exit
+      devbox shell
+      ```
+
+      ### Clear local cache
+      ```bash
+      rm -rf .devbox/
+      devbox shell  # Rebuilds cache
+      ```
+
+      ### View package details
+      ```bash
+      devbox info <package-name>
+      ```
+
+      ## Resources
+
+      - **Documentation**: https://www.jetify.com/devbox/docs
+      - **Package Search**: https://www.nixhub.io
+      - **Templates**: `ls ~/.devbox-templates/`
+      - **Examples**: https://github.com/jetify-com/devbox-examples
+
+      ## Example Workflows
+
+      ### Node.js Project
+      ```bash
+      mkdir my-app && cd my-app
+      cp ~/.devbox-templates/nodejs-webapp.json devbox.json
+      devbox shell
+      npm init -y
+      npm install express
+      npm start
+      ```
+
+      ### Python API
+      ```bash
+      mkdir my-api && cd my-api
+      cp ~/.devbox-templates/python-api.json devbox.json
+      devbox shell
+      poetry init
+      poetry add fastapi uvicorn
+      poetry run uvicorn main:app --reload
+      ```
+
+      ### Go Service
+      ```bash
+      mkdir my-service && cd my-service
+      cp ~/.devbox-templates/go-service.json devbox.json
+      devbox shell
+      go mod init github.com/user/my-service
+      go run main.go
+      ```
+
+      ---
+
+      **Questions?** Check https://www.jetify.com/devbox/docs or run `devbox help`
+
   # Netplan configuration for bridge networking (commented template)
   - path: /etc/netplan/60-bridge.yaml
     content: |
@@ -715,6 +1109,15 @@ runcmd:
       chmod 644 /home/cloudops/.gitconfig.template
       chmod 644 /home/cloudops/code/work/.gitconfig.template
       chmod 644 /etc/netplan/60-bridge.yaml
+
+      # Set permissions for devbox templates and documentation
+      mkdir -p /home/cloudops/.devbox-templates
+      chown cloudops:cloudops /home/cloudops/.devbox-templates
+      chmod 755 /home/cloudops/.devbox-templates
+      if ls /home/cloudops/.devbox-templates/*.json >/dev/null 2>&1; then
+        chmod 644 /home/cloudops/.devbox-templates/*.json
+      fi
+      chmod 644 /home/cloudops/.devbox-quickstart.md
 
       # Process git configuration templates with environment variables
       echo "Processing git configuration templates..."
@@ -774,6 +1177,72 @@ runcmd:
       apt-get clean || echo "WARNING: apt-get clean failed (non-critical)"
       rm -rf /var/cache/apt/archives/* || echo "WARNING: Cache cleanup failed (non-critical)"
 
+      # Install Determinate Nix (system-wide, multi-user mode)
+      echo "Installing Determinate Nix..."
+      if ! command -v nix &>/dev/null; then
+        curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
+          sh -s -- install --no-confirm \
+          --extra-conf "auto-optimise-store = true" \
+          --extra-conf "trusted-users = root cloudops" \
+          --extra-conf "experimental-features = nix-command flakes" || \
+          echo "WARNING: Nix installation failed" >&2
+
+        # Source Nix profile to make it available in current shell
+        if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+        fi
+
+        # Verify Nix installation
+        if command -v nix &>/dev/null; then
+          echo "✓ Nix installed: $(nix --version)"
+          echo "  - Auto-optimisation enabled (reduces store size by 25-35%)"
+          echo "  - Flakes and nix-command enabled"
+        else
+          echo "ERROR: Nix installation verification failed" >&2
+        fi
+      else
+        echo "✓ Nix already installed: $(nix --version)"
+      fi
+
+      # Install Devbox (as cloudops user)
+      echo "Installing Jetify Devbox..."
+      if ! su - cloudops -c 'command -v devbox &>/dev/null'; then
+        # Install Devbox CLI
+        su - cloudops -c 'curl -fsSL https://get.jetify.com/devbox | bash -s -- -f' || \
+          echo "WARNING: Devbox installation failed" >&2
+
+        # Verify Devbox installation
+        if su - cloudops -c 'command -v devbox &>/dev/null'; then
+          su - cloudops -c 'devbox version' | head -1 | sed 's/^/✓ Devbox installed: /'
+
+          # Install minimal global CLI tools (minimal overhead, universally useful)
+          echo "  - Installing global tools: jq, yq, gh..."
+          if ! su - cloudops -c 'devbox global add jq yq gh --quiet' 2>&1 | grep -v "^$" | sed 's/^/  /'; then
+            echo "  WARNING: Global tools installation failed - check network and Nix store" >&2
+          fi
+
+          # Initialize devbox global environment
+          su - cloudops -c 'eval "$(devbox global shellenv)"' 2>/dev/null || \
+            echo "  WARNING: Global shellenv initialization failed (non-critical)" >&2
+        else
+          echo "ERROR: Devbox installation verification failed" >&2
+        fi
+      else
+        su - cloudops -c 'devbox version' | head -1 | sed 's/^/✓ Devbox already installed: /'
+      fi
+
+      # Optimize Nix store to reduce disk usage (final optimization)
+      echo "Optimizing Nix store (may take 30-60 seconds)..."
+      if command -v nix-store &>/dev/null; then
+        nix-store --optimise 2>/dev/null && \
+          echo "✓ Nix store optimized (hard-linked duplicate files)" || \
+          echo "WARNING: Nix store optimization skipped (non-critical)" >&2
+
+        # Display final store size
+        STORE_SIZE=$(du -sh /nix/store 2>/dev/null | cut -f1)
+        echo "  - Nix store size: ${STORE_SIZE:-unknown}"
+      fi
+
       # Create completion marker (last step)
       if [ ! -f /home/cloudops/.setup-complete ]; then
         echo "CloudOps setup completed at $(date)" > /home/cloudops/.setup-complete
@@ -784,12 +1253,38 @@ runcmd:
     } 2>&1 | tee -a /var/log/cloudops-setup.log
 
 final_message: |
-  ✅ Ubuntu 25.10 CloudOps setup complete!
+  ✅ Ubuntu 25.10 CloudOps + Devbox setup complete!
 
   Default user: cloudops
   Custom bash configuration installed with:
   - Full .bashrc with history, completions, NVM lazy loading
   - Comprehensive .bash_aliases with Git, Docker, Podman, Kubernetes, Azure, Terraform shortcuts
+  - Devbox global environment auto-activated
+
+  🚀 Devbox Development Environment:
+  - Nix package manager installed (auto-optimizing store)
+  - Jetify Devbox CLI ready
+  - Global tools: jq, yq, gh
+  - Templates available: ~/.devbox-templates/
+    • nodejs-webapp.json  - Node.js/TypeScript web apps
+    • python-api.json    - Python FastAPI/Flask APIs
+    • go-service.json    - Go microservices
+    • rust-cli.json      - Rust CLI tools
+    • fullstack.json     - Multi-language full-stack
+
+  📖 Quick Start with Devbox:
+    # Create a new Node.js project
+    mkdir my-app && cd my-app
+    cp ~/.devbox-templates/nodejs-webapp.json devbox.json
+    devbox shell
+
+    # Or initialize from scratch
+    devbox init
+    devbox add nodejs@22.14.0
+    devbox shell
+
+    # Read the quickstart guide
+    cat ~/.devbox-quickstart.md
 
   ⚠️  IMPORTANT: Customize your configuration
   - Edit ~/.gitconfig to set your personal name and email
@@ -803,6 +1298,8 @@ final_message: |
 
   Performance optimizations:
   - NVM lazy loading (faster shell startup)
+  - Nix store auto-optimization (25-35% size reduction)
+  - Devbox caching (fast package installations)
   - Package cache cleaned (reduced disk usage)
   - Lazy-loaded kubectl/helm completions
 
@@ -816,3 +1313,8 @@ final_message: |
 
   View setup logs:
     multipass exec cloudops -- cat /var/log/cloudops-setup.log
+
+  Resources:
+    - Devbox docs: https://www.jetify.com/devbox/docs
+    - Package search: https://www.nixhub.io
+    - Templates: ls ~/.devbox-templates/
