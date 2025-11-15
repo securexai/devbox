@@ -345,12 +345,29 @@ write_files:
 
       # pnpm global package manager
       # Installed via 'pnpm setup' during cloud-init
+      # Only add PNPM_HOME to PATH if directory exists (defensive check)
       export PNPM_HOME="/home/cloudops/.local/share/pnpm"
-      case ":$PATH:" in
-        *":$PNPM_HOME:"*) ;;
-        *) export PATH="$PNPM_HOME:$PATH" ;;
-      esac
+      if [ -d "$PNPM_HOME" ]; then
+        case ":$PATH:" in
+          *":$PNPM_HOME:"*) ;;
+          *) export PATH="$PNPM_HOME:$PATH" ;;
+        esac
+      fi
       # pnpm end
+
+      # ============================================================================
+      # npm Configuration
+      # ============================================================================
+
+      # npm global packages (used for Claude CLI)
+      # Installed via 'npm install -g' during cloud-init
+      export NPM_PREFIX="/home/cloudops/.local/share/npm"
+      if [ -d "$NPM_PREFIX/bin" ]; then
+        case ":$PATH:" in
+          *":$NPM_PREFIX/bin:"*) ;;
+          *) export PATH="$NPM_PREFIX/bin:$PATH" ;;
+        esac
+      fi
 
   # Custom .bash_aliases for cloudops user
   - path: /home/cloudops/.bash_aliases
@@ -864,7 +881,7 @@ write_files:
 
       set -e
 
-      # Source bashrc to get PNPM_HOME and devbox environment
+      # Source bashrc to get NPM_PREFIX and devbox environment
       if [ -f "$HOME/.bashrc" ]; then
         source "$HOME/.bashrc"
       fi
@@ -874,10 +891,10 @@ write_files:
 
       echo ""
       echo "🤖 Updating Claude CLI..."
-      if [ -n "$PNPM_HOME" ]; then
-        pnpm update -g @anthropic-ai/claude-code
+      if [ -n "$NPM_PREFIX" ]; then
+        npm update -g @anthropic-ai/claude-code
       else
-        echo "ERROR: PNPM_HOME not set. Please run: source ~/.bashrc" >&2
+        echo "ERROR: NPM_PREFIX not set. Please run: source ~/.bashrc" >&2
         exit 1
       fi
 
@@ -1318,8 +1335,9 @@ runcmd:
           echo "WARNING - Nix installation failed" >&2
 
         # Source Nix profile to make it available in current shell
+        # Set HOME temporarily since runcmd doesn't have it set
         if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          HOME=/root . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
         fi
 
         # Verify Nix installation
@@ -1355,27 +1373,43 @@ runcmd:
           su - cloudops -c 'eval "$(devbox global shellenv)"' 2>/dev/null || \
             echo "  WARNING - Global shellenv initialization failed (non-critical)" >&2
 
-          # Define PNPM_HOME path (centralized)
-          PNPM_HOME="/home/cloudops/.local/share/pnpm"
+          # Define NPM_PREFIX path (centralized)
+          NPM_PREFIX="/home/cloudops/.local/share/npm"
 
-          # Setup pnpm and install Claude CLI
-          echo "  - Setting up pnpm and installing Claude CLI..."
+          # Create npm prefix directory with proper permissions
+          echo "  - Creating npm prefix directory: ${NPM_PREFIX}"
+          mkdir -p "${NPM_PREFIX}"
+          chown cloudops:cloudops "${NPM_PREFIX}"
+          chmod 755 "${NPM_PREFIX}"
 
-          # Create and run pnpm setup
+          # Setup pnpm for general use (non-critical)
           echo "  - Setting up pnpm..."
-          su - cloudops -c 'devbox global run -- bash -c "export SHELL=/bin/bash && pnpm setup"' 2>&1 | grep -v "^$" | sed 's/^/  /' || \
+          PNPM_HOME="/home/cloudops/.local/share/pnpm"
+          mkdir -p "${PNPM_HOME}"
+          chown cloudops:cloudops "${PNPM_HOME}"
+          chmod 755 "${PNPM_HOME}"
+          su - cloudops -c 'cd ~ && devbox global run -- bash -c "export SHELL=/bin/bash && pnpm setup"' 2>&1 | grep -v "^$" | sed 's/^/  /' || \
             echo "  WARNING - pnpm setup failed (non-critical)" >&2
 
-          # Install Claude CLI
-          echo "  - Installing Claude CLI..."
-          su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm install -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /' || \
-            echo "  WARNING - Claude CLI installation failed" >&2
+          # Configure npm and install Claude CLI
+          echo "  - Configuring npm prefix and installing Claude CLI (with 300s timeout)..."
+          if timeout 300 su - cloudops -c "cd ~ && devbox global run -- npm config set prefix ${NPM_PREFIX} && devbox global run -- npm install -g @anthropic-ai/claude-code" 2>&1 | sed 's/^/  /'; then
+            echo "  ✓ Claude CLI installation completed"
+          else
+            echo "  WARNING - Claude CLI installation failed or timed out" >&2
+          fi
 
           # Verify Claude CLI installation
-          if su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && claude --version'" 2>/dev/null; then
-            echo "  ✓ Claude CLI installed successfully"
+          echo "  - Verifying Claude CLI installation..."
+          CLAUDE_VERSION=$(su - cloudops -c "cd ~ && devbox global run -- ${NPM_PREFIX}/bin/claude --version 2>&1" 2>/dev/null | head -1)
+
+          if [ -n "$CLAUDE_VERSION" ] && echo "$CLAUDE_VERSION" | grep -qiE '(claude|@anthropic)'; then
+            echo "  ✓ Claude CLI installed successfully: $CLAUDE_VERSION"
           else
-            echo "  WARNING - Claude CLI verification failed" >&2
+            echo "  WARNING - Claude CLI verification failed. Output was: ${CLAUDE_VERSION:-none}" >&2
+            echo "  Debug: Checking npm prefix contents..." >&2
+            su - cloudops -c "ls -la \"${NPM_PREFIX}/bin\" 2>&1" | sed 's/^/    /' >&2
+            echo "  This is non-critical and can be installed manually later with: npm install -g @anthropic-ai/claude-code" >&2
           fi
         else
           echo "ERROR - Devbox installation verification failed" >&2
@@ -1418,7 +1452,7 @@ final_message: |
   - Nix package manager installed (auto-optimizing store)
   - Jetify Devbox CLI ready
   - Global tools: jq, yq, gh, nodejs (24.11.0), pnpm (10.20.0)
-  - 🤖 Claude CLI installed globally (accessible everywhere)
+  - 🤖 Claude CLI installed globally via npm (accessible everywhere)
   - Templates available: ~/.devbox-templates/
     • nodejs-webapp.json  - Node.js/TypeScript web apps
     • python-api.json    - Python FastAPI/Flask APIs
