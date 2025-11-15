@@ -345,11 +345,14 @@ write_files:
 
       # pnpm global package manager
       # Installed via 'pnpm setup' during cloud-init
+      # Only add PNPM_HOME to PATH if directory exists (defensive check)
       export PNPM_HOME="/home/cloudops/.local/share/pnpm"
-      case ":$PATH:" in
-        *":$PNPM_HOME:"*) ;;
-        *) export PATH="$PNPM_HOME:$PATH" ;;
-      esac
+      if [ -d "$PNPM_HOME" ]; then
+        case ":$PATH:" in
+          *":$PNPM_HOME:"*) ;;
+          *) export PATH="$PNPM_HOME:$PATH" ;;
+        esac
+      fi
       # pnpm end
 
   # Custom .bash_aliases for cloudops user
@@ -1359,6 +1362,12 @@ runcmd:
           # Define PNPM_HOME path (centralized)
           PNPM_HOME="/home/cloudops/.local/share/pnpm"
 
+          # FIX 1: Create PNPM_HOME directory as root BEFORE pnpm installation (prevents race condition)
+          echo "  - Creating PNPM_HOME directory: ${PNPM_HOME}"
+          mkdir -p "${PNPM_HOME}"
+          chown cloudops:cloudops "${PNPM_HOME}"
+          chmod 755 "${PNPM_HOME}"
+
           # Setup pnpm and install Claude CLI
           echo "  - Setting up pnpm and installing Claude CLI..."
 
@@ -1367,16 +1376,31 @@ runcmd:
           su - cloudops -c 'devbox global run -- bash -c "export SHELL=/bin/bash && pnpm setup"' 2>&1 | grep -v "^$" | sed 's/^/  /' || \
             echo "  WARNING - pnpm setup failed (non-critical)" >&2
 
-          # Install Claude CLI using explicit PATH setup
-          echo "  - Installing Claude CLI..."
-          su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && mkdir -p \"\${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm add -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /' || \
-            echo "  WARNING - Claude CLI installation failed" >&2
-
-          # Verify Claude CLI installation
-          if su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && command -v claude && claude --version'" 2>/dev/null | tail -1; then
-            echo "  ✓ Claude CLI installed successfully"
+          # FIX 3: Verify pnpm availability before attempting Claude CLI installation
+          echo "  - Verifying pnpm availability..."
+          if ! su - cloudops -c "devbox global run -- command -v pnpm" &>/dev/null; then
+            echo "  ERROR - pnpm not available after setup, cannot install Claude CLI" >&2
           else
-            echo "  WARNING - Claude CLI verification failed" >&2
+            echo "  ✓ pnpm available at: $(su - cloudops -c 'devbox global run -- command -v pnpm' 2>/dev/null)"
+
+            # FIX 4: Install Claude CLI with timeout to prevent network hangs
+            echo "  - Installing Claude CLI (with 300s timeout)..."
+            if timeout 300 su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm add -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /'; then
+              echo "  ✓ Claude CLI installation command completed"
+            else
+              echo "  WARNING - Claude CLI installation failed or timed out" >&2
+            fi
+
+            # FIX 2: Verify Claude CLI installation with proper error handling (no tail -1 masking)
+            echo "  - Verifying Claude CLI installation..."
+            CLAUDE_VERSION=$(su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && command -v claude &>/dev/null && claude --version 2>&1'" 2>/dev/null)
+
+            if [ -n "$CLAUDE_VERSION" ] && echo "$CLAUDE_VERSION" | grep -q "claude"; then
+              echo "  ✓ Claude CLI installed successfully: $CLAUDE_VERSION"
+            else
+              echo "  WARNING - Claude CLI verification failed. Output was: ${CLAUDE_VERSION:-none}" >&2
+              echo "  This is non-critical and can be installed manually later with: pnpm add -g @anthropic-ai/claude-code" >&2
+            fi
           fi
         else
           echo "ERROR - Devbox installation verification failed" >&2
