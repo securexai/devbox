@@ -1367,13 +1367,13 @@ runcmd:
           su - cloudops -c 'devbox global run -- bash -c "export SHELL=/bin/bash && pnpm setup"' 2>&1 | grep -v "^$" | sed 's/^/  /' || \
             echo "  WARNING - pnpm setup failed (non-critical)" >&2
 
-          # Install Claude CLI
+          # Install Claude CLI using explicit PATH setup
           echo "  - Installing Claude CLI..."
-          su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm install -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /' || \
+          su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && mkdir -p \"\${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm add -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /' || \
             echo "  WARNING - Claude CLI installation failed" >&2
 
           # Verify Claude CLI installation
-          if su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && claude --version'" 2>/dev/null; then
+          if su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && command -v claude && claude --version'" 2>/dev/null | tail -1; then
             echo "  ✓ Claude CLI installed successfully"
           else
             echo "  WARNING - Claude CLI verification failed" >&2
