@@ -1386,13 +1386,9 @@ runcmd:
             echo "  ✓ pnpm available: version $PNPM_VERSION"
 
             # FIX 4: Install Claude CLI with timeout to prevent network hangs
-            # Configure pnpm global-bin-dir first to avoid PATH validation errors
-            echo "  - Configuring pnpm global directory..."
-            su - cloudops -c "cd ~ && devbox global run -- pnpm config set global-bin-dir \"${PNPM_HOME}\"" 2>&1 | sed 's/^/  /' || \
-              echo "  WARNING - pnpm config set failed (non-critical)" >&2
-
+            # Source .bashrc first to get PNPM_HOME in PATH, then install
             echo "  - Installing Claude CLI (with 300s timeout)..."
-            if timeout 300 su - cloudops -c "cd ~ && devbox global run -- pnpm add -g @anthropic-ai/claude-code" 2>&1 | sed 's/^/  /'; then
+            if timeout 300 su - cloudops -c "cd ~ && source ~/.bashrc && devbox global run -- pnpm add -g @anthropic-ai/claude-code" 2>&1 | sed 's/^/  /'; then
               echo "  ✓ Claude CLI installation command completed"
             else
               echo "  WARNING - Claude CLI installation failed or timed out" >&2
