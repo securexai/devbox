@@ -1,8 +1,8 @@
 # CloudOps Multipass Development Environment
 
-**Status:** ✅ **Production Ready** | **Last Updated:** 2025-11-14
+**Status:** ✅ **Production Ready** | **Last Updated:** 2025-11-15 | **Version:** 2.2.0
 
-A production-ready cloud-init configuration for Multipass VMs featuring Ubuntu 25.10, complete development tools, Devbox/Nix integration, and VS Code Remote SSH support.
+A production-ready cloud-init configuration for Multipass VMs featuring Ubuntu 25.10, complete development tools, Devbox/Nix integration, Claude CLI, and VS Code Remote SSH support.
 
 ## What Is This?
 
@@ -11,6 +11,7 @@ This project provides a **declarative, reproducible development environment** us
 - **Multipass** - Lightweight Ubuntu VMs on Windows, macOS, and Linux
 - **Cloud-init** - Automated VM configuration and provisioning
 - **Devbox** - Isolated, reproducible development environments with Nix
+- **Claude CLI** - AI-powered coding assistant (@anthropic-ai/claude-code)
 - **VS Code Remote SSH** - Full-featured remote development experience
 
 **Key Features:**
@@ -18,6 +19,7 @@ This project provides a **declarative, reproducible development environment** us
 - ✅ Fully automated setup (one command to launch)
 - ✅ Ubuntu 25.10 with cloud-init schema validation
 - ✅ Devbox + Nix for project isolation
+- ✅ Claude CLI globally installed via npm
 - ✅ Pre-configured VS Code Remote SSH support
 - ✅ Security hardening with ED25519 keys
 - ✅ Production-ready git workflows
@@ -122,6 +124,10 @@ ssh cloudops "command"                  # Run command remotely
 # VS Code Remote
 code --remote ssh-remote+cloudops /path # Open remote directory
 code --remote ssh-remote+cloudops .     # Open current directory remotely
+
+# Claude CLI Usage (available everywhere in VM)
+ssh cloudops "claude --help"            # Show Claude CLI help
+ssh cloudops "claude 'explain this code'" # Ask Claude for help
 
 # Cloud-init Status
 multipass exec cloudops -- cloud-init status --wait  # Wait for completion
@@ -309,13 +315,17 @@ MIT License - See LICENSE file for details
 
 ## Project Status
 
-| Component | Status | Last Tested |
-|-----------|--------|-------------|
-| Cloud-init Config | ✅ Valid | 2025-11-14 |
-| Ubuntu 25.10 | ✅ Compatible | 2025-11-14 |
-| Multipass 1.16+ | ✅ Working | 2025-11-14 |
-| VS Code Remote | ✅ Functional | 2025-11-14 |
-| Devbox Integration | ✅ Operational | 2025-11-14 |
+| Component | Status | Version | Last Tested |
+|-----------|--------|---------|-------------|
+| Cloud-init Config | ✅ Valid | v2.2.0 | 2025-11-15 |
+| Ubuntu 25.10 | ✅ Compatible | Oracular | 2025-11-15 |
+| Multipass | ✅ Working | 1.16.1+ | 2025-11-15 |
+| VS Code Remote | ✅ Functional | Latest | 2025-11-15 |
+| Devbox Integration | ✅ Operational | 0.16.0 | 2025-11-15 |
+| Nix Package Manager | ✅ Operational | 3.13.1 | 2025-11-15 |
+| Claude CLI | ✅ Installed | 2.0.42 | 2025-11-15 |
+| Node.js (Global) | ✅ Available | 24.11.0 | 2025-11-15 |
+| pnpm (Global) | ✅ Available | 10.20.0 | 2025-11-15 |
 
 **Maintained by:** CloudOps Development Team
 **Questions or Issues:** Open an issue on GitHub

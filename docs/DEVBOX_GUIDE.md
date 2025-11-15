@@ -3,7 +3,7 @@
 Complete guide to using Jetify Devbox for isolated, reproducible development
 environments in your cloudops Multipass VM.
 
-**Last Updated**: 2025-11-14
+**Last Updated**: 2025-11-15
 
 ## Table of Contents
 
@@ -34,7 +34,8 @@ Your VM includes:
 
 - **Nix Package Manager**: v3.13.1 (Determinate Systems installer)
 - **Devbox CLI**: v0.16.0
-- **Global Tools**: jq, yq, gh (available in all shells)
+- **Global Tools**: jq, yq, gh, nodejs (24.11.0), pnpm (10.20.0)
+- **Claude CLI**: v2.0.42 (installed globally via npm)
 - **5 Ready-to-use Templates**: Node.js, Python, Go, Rust, Full-stack
 - **Auto-activated Environment**: No manual configuration needed
 
@@ -137,6 +138,9 @@ devbox version
 jq --version
 yq --version
 gh --version
+node --version
+pnpm --version
+claude --version
 ```
 
 ### Create Your First Environment
@@ -1342,6 +1346,43 @@ A: Base: ~693MB. Typical project with Node/Python/DB: ~3-4GB total.
 
 A: Yes. Nix automatically shares packages across all projects.
 
+### Package Manager Questions
+
+**Q: Why is Claude CLI installed with npm instead of pnpm?**
+
+A: After 9 debugging iterations, we discovered that pnpm has strict PATH validation requirements that conflict with the devbox environment:
+
+- **pnpm validation**: pnpm validates that `global-bin-dir` exists in `$PATH` before allowing `pnpm add -g`
+- **devbox environment**: The devbox shell doesn't inherit `PNPM_HOME` from `.bashrc`, causing validation to fail
+- **npm solution**: npm doesn't have this PATH validation requirement and works reliably with a configured prefix
+
+This ensures automated Claude CLI installation works consistently during cloud-init provisioning.
+
+**Q: Should I use npm or pnpm for my projects?**
+
+A: Use whichever fits your project:
+
+- **pnpm**: Recommended for new projects (faster, disk-efficient, strict dependency resolution)
+- **npm**: Works everywhere, simpler, no additional configuration needed
+- **Global packages**: npm is used for Claude CLI; pnpm is available for other global tools via devbox
+
+Both are installed globally and available in all environments.
+
+**Q: How do I install global packages?**
+
+A: Three options:
+
+```bash
+# Option 1: Via devbox (recommended - isolated per project)
+devbox global add <package>
+
+# Option 2: Via npm (works everywhere)
+npm install -g <package>
+
+# Option 3: Via pnpm (project-specific)
+pnpm add -g <package>  # Requires PNPM_HOME in PATH
+```
+
 ### Workflow Questions
 
 **Q: Should I commit devbox.json?**
@@ -1428,6 +1469,6 @@ Now that you understand Devbox, try:
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-14
+**Document Version**: 1.1
+**Last Updated**: 2025-11-15
 **Maintained by**: CloudOps Development Team
