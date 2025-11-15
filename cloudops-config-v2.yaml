@@ -1318,8 +1318,9 @@ runcmd:
           echo "WARNING - Nix installation failed" >&2
 
         # Source Nix profile to make it available in current shell
+        # Set HOME temporarily since runcmd doesn't have it set
         if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          HOME=/root . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
         fi
 
         # Verify Nix installation
