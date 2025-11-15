@@ -1378,10 +1378,12 @@ runcmd:
 
           # FIX 3: Verify pnpm availability before attempting Claude CLI installation
           echo "  - Verifying pnpm availability..."
-          if ! su - cloudops -c "cd ~ && devbox global run -- command -v pnpm" &>/dev/null; then
+          PNPM_VERSION=$(su - cloudops -c "cd ~ && devbox global run -- pnpm --version" 2>/dev/null | head -1)
+          if [ -z "$PNPM_VERSION" ] || ! echo "$PNPM_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
             echo "  ERROR - pnpm not available after setup, cannot install Claude CLI" >&2
+            echo "  Debug: PNPM_VERSION output was: ${PNPM_VERSION:-empty}" >&2
           else
-            echo "  ✓ pnpm available at: $(su - cloudops -c 'cd ~ && devbox global run -- command -v pnpm' 2>/dev/null)"
+            echo "  ✓ pnpm available: version $PNPM_VERSION"
 
             # FIX 4: Install Claude CLI with timeout to prevent network hangs
             echo "  - Installing Claude CLI (with 300s timeout)..."
