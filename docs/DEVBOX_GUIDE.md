@@ -34,7 +34,8 @@ Your VM includes:
 
 - **Nix Package Manager**: v3.13.1 (Determinate Systems installer)
 - **Devbox CLI**: v0.16.0
-- **Global Tools**: jq, yq, gh, nodejs (24.11.0), pnpm (10.20.0)
+- **Global Tools**: jq, yq, gh, nodejs (24.11.0)
+- **Per-Project Tools**: pnpm (add via `devbox add pnpm@10` in your project)
 - **Claude CLI**: v2.0.42 (installed globally via npm)
 - **5 Ready-to-use Templates**: Node.js, Python, Go, Rust, Full-stack
 - **Auto-activated Environment**: No manual configuration needed

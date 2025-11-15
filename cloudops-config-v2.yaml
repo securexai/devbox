@@ -340,22 +340,6 @@ write_files:
       fi
 
       # ============================================================================
-      # pnpm Configuration
-      # ============================================================================
-
-      # pnpm global package manager
-      # Installed via 'pnpm setup' during cloud-init
-      # Only add PNPM_HOME to PATH if directory exists (defensive check)
-      export PNPM_HOME="/home/cloudops/.local/share/pnpm"
-      if [ -d "$PNPM_HOME" ]; then
-        case ":$PATH:" in
-          *":$PNPM_HOME:"*) ;;
-          *) export PATH="$PNPM_HOME:$PATH" ;;
-        esac
-      fi
-      # pnpm end
-
-      # ============================================================================
       # npm Configuration
       # ============================================================================
 
@@ -582,6 +566,7 @@ write_files:
 
       # ============================================================================
       # pnpm & Node.js Aliases
+      # Note: pnpm aliases work within devbox shells (per-project installations)
       # ============================================================================
 
       alias pn='pnpm'
@@ -901,7 +886,6 @@ write_files:
       echo ""
       echo "✅ Update complete! Current versions:"
       echo "  Node.js: $(node --version 2>/dev/null || echo 'not found')"
-      echo "  pnpm: $(pnpm --version 2>/dev/null || echo 'not found')"
       echo "  Claude CLI: $(claude --version 2>/dev/null || echo 'not found')"
 
   # Maintenance script: Health check
@@ -936,13 +920,11 @@ write_files:
       fi
       echo ""
 
-      # 4. Check pnpm
-      echo "4. pnpm:"
-      if command -v pnpm &>/dev/null; then
-        echo "   ✅ pnpm $(pnpm --version) at $(which pnpm)"
-      else
-        echo "   ❌ pnpm NOT found in PATH"
-      fi
+      # 4. Check pnpm (per-project via Devbox)
+      echo "4. pnpm (per-project):"
+      echo "   ℹ️  pnpm is available per-project via Devbox"
+      echo "   Usage: devbox add pnpm@10 (in your project directory)"
+      echo "   Note: pnpm is NOT globally installed (by design)"
       echo ""
 
       # 5. Check Claude CLI
@@ -963,17 +945,8 @@ write_files:
       fi
       echo ""
 
-      # 7. Check PNPM_HOME
-      echo "7. PNPM_HOME:"
-      if [ -n "$PNPM_HOME" ]; then
-        echo "   ✅ PNPM_HOME=$PNPM_HOME"
-      else
-        echo "   ⚠️  PNPM_HOME not set - run: source ~/.bashrc"
-      fi
-      echo ""
-
-      # 8. Check templates
-      echo "8. Available templates:"
+      # 7. Check templates
+      echo "7. Available templates:"
       if [ -d ~/.devbox-templates ]; then
         ls -1 ~/.devbox-templates/ 2>/dev/null | sed 's/^/   ✅ /' || echo "   ⚠️  No templates found"
       else
@@ -1364,8 +1337,8 @@ runcmd:
           su - cloudops -c 'devbox version' | head -1 | sed 's/^/✓ Devbox installed: /'
 
           # Install global CLI tools and Claude CLI infrastructure
-          echo "  - Installing global tools: jq, yq, gh, nodejs, pnpm..."
-          if ! timeout 600 su - cloudops -c 'devbox global add jq yq gh nodejs@24.11.0 pnpm@10.20.0 --quiet' 2>&1 | grep -v "^$" | sed 's/^/  /'; then
+          echo "  - Installing global tools: jq, yq, gh, nodejs..."
+          if ! timeout 600 su - cloudops -c 'devbox global add jq yq gh nodejs@24.11.0 --quiet' 2>&1 | grep -v "^$" | sed 's/^/  /'; then
             echo "  WARNING: Global tools installation failed - check network and Nix store" >&2
           fi
 
@@ -1381,15 +1354,6 @@ runcmd:
           mkdir -p "${NPM_PREFIX}"
           chown cloudops:cloudops "${NPM_PREFIX}"
           chmod 755 "${NPM_PREFIX}"
-
-          # Setup pnpm for general use (non-critical)
-          echo "  - Setting up pnpm..."
-          PNPM_HOME="/home/cloudops/.local/share/pnpm"
-          mkdir -p "${PNPM_HOME}"
-          chown cloudops:cloudops "${PNPM_HOME}"
-          chmod 755 "${PNPM_HOME}"
-          su - cloudops -c 'cd ~ && devbox global run -- bash -c "export SHELL=/bin/bash && pnpm setup"' 2>&1 | grep -v "^$" | sed 's/^/  /' || \
-            echo "  WARNING - pnpm setup failed (non-critical)" >&2
 
           # Configure npm and install Claude CLI
           echo "  - Configuring npm prefix and installing Claude CLI (with 300s timeout)..."
@@ -1451,7 +1415,7 @@ final_message: |
   🚀 Devbox Development Environment:
   - Nix package manager installed (auto-optimizing store)
   - Jetify Devbox CLI ready
-  - Global tools: jq, yq, gh, nodejs (24.11.0), pnpm (10.20.0)
+  - Global tools: jq, yq, gh, nodejs (24.11.0)
   - 🤖 Claude CLI installed globally via npm (accessible everywhere)
   - Templates available: ~/.devbox-templates/
     • nodejs-webapp.json  - Node.js/TypeScript web apps
@@ -1475,7 +1439,7 @@ final_message: |
     cat ~/.devbox-quickstart.md
 
   🛠️  Maintenance Scripts:
-    ~/bin/check-devbox-health.sh  - Verify Devbox, Node.js, pnpm, Claude CLI setup
+    ~/bin/check-devbox-health.sh  - Verify Devbox, Node.js, Claude CLI setup
     ~/bin/update-global-tools.sh  - Update all global tools and Claude CLI
 
   🤖 Using Claude CLI:
