@@ -1386,8 +1386,13 @@ runcmd:
             echo "  ✓ pnpm available: version $PNPM_VERSION"
 
             # FIX 4: Install Claude CLI with timeout to prevent network hangs
+            # Configure pnpm global-bin-dir first to avoid PATH validation errors
+            echo "  - Configuring pnpm global directory..."
+            su - cloudops -c "cd ~ && devbox global run -- pnpm config set global-bin-dir \"${PNPM_HOME}\"" 2>&1 | sed 's/^/  /' || \
+              echo "  WARNING - pnpm config set failed (non-critical)" >&2
+
             echo "  - Installing Claude CLI (with 300s timeout)..."
-            if timeout 300 su - cloudops -c "cd ~ && devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm add -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /'; then
+            if timeout 300 su - cloudops -c "cd ~ && devbox global run -- pnpm add -g @anthropic-ai/claude-code" 2>&1 | sed 's/^/  /'; then
               echo "  ✓ Claude CLI installation command completed"
             else
               echo "  WARNING - Claude CLI installation failed or timed out" >&2
@@ -1395,12 +1400,14 @@ runcmd:
 
             # FIX 2: Verify Claude CLI installation with proper error handling (no tail -1 masking)
             echo "  - Verifying Claude CLI installation..."
-            CLAUDE_VERSION=$(su - cloudops -c "cd ~ && devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && command -v claude &>/dev/null && claude --version 2>&1'" 2>/dev/null)
+            CLAUDE_VERSION=$(su - cloudops -c "cd ~ && export PATH=\"${PNPM_HOME}:\${PATH}\" && claude --version 2>&1" 2>/dev/null | head -1)
 
-            if [ -n "$CLAUDE_VERSION" ] && echo "$CLAUDE_VERSION" | grep -q "claude"; then
+            if [ -n "$CLAUDE_VERSION" ] && echo "$CLAUDE_VERSION" | grep -qiE '(claude|@anthropic)'; then
               echo "  ✓ Claude CLI installed successfully: $CLAUDE_VERSION"
             else
               echo "  WARNING - Claude CLI verification failed. Output was: ${CLAUDE_VERSION:-none}" >&2
+              echo "  Debug: Checking PNPM_HOME contents..." >&2
+              su - cloudops -c "ls -la \"${PNPM_HOME}\" 2>&1" | sed 's/^/    /' >&2
               echo "  This is non-critical and can be installed manually later with: pnpm add -g @anthropic-ai/claude-code" >&2
             fi
           fi
