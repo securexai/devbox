@@ -1373,19 +1373,19 @@ runcmd:
 
           # Create and run pnpm setup
           echo "  - Setting up pnpm..."
-          su - cloudops -c 'devbox global run -- bash -c "export SHELL=/bin/bash && pnpm setup"' 2>&1 | grep -v "^$" | sed 's/^/  /' || \
+          su - cloudops -c 'cd ~ && devbox global run -- bash -c "export SHELL=/bin/bash && pnpm setup"' 2>&1 | grep -v "^$" | sed 's/^/  /' || \
             echo "  WARNING - pnpm setup failed (non-critical)" >&2
 
           # FIX 3: Verify pnpm availability before attempting Claude CLI installation
           echo "  - Verifying pnpm availability..."
-          if ! su - cloudops -c "devbox global run -- command -v pnpm" &>/dev/null; then
+          if ! su - cloudops -c "cd ~ && devbox global run -- command -v pnpm" &>/dev/null; then
             echo "  ERROR - pnpm not available after setup, cannot install Claude CLI" >&2
           else
-            echo "  ✓ pnpm available at: $(su - cloudops -c 'devbox global run -- command -v pnpm' 2>/dev/null)"
+            echo "  ✓ pnpm available at: $(su - cloudops -c 'cd ~ && devbox global run -- command -v pnpm' 2>/dev/null)"
 
             # FIX 4: Install Claude CLI with timeout to prevent network hangs
             echo "  - Installing Claude CLI (with 300s timeout)..."
-            if timeout 300 su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm add -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /'; then
+            if timeout 300 su - cloudops -c "cd ~ && devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm add -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /'; then
               echo "  ✓ Claude CLI installation command completed"
             else
               echo "  WARNING - Claude CLI installation failed or timed out" >&2
@@ -1393,7 +1393,7 @@ runcmd:
 
             # FIX 2: Verify Claude CLI installation with proper error handling (no tail -1 masking)
             echo "  - Verifying Claude CLI installation..."
-            CLAUDE_VERSION=$(su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && command -v claude &>/dev/null && claude --version 2>&1'" 2>/dev/null)
+            CLAUDE_VERSION=$(su - cloudops -c "cd ~ && devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && command -v claude &>/dev/null && claude --version 2>&1'" 2>/dev/null)
 
             if [ -n "$CLAUDE_VERSION" ] && echo "$CLAUDE_VERSION" | grep -q "claude"; then
               echo "  ✓ Claude CLI installed successfully: $CLAUDE_VERSION"
