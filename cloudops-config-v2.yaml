@@ -339,6 +339,19 @@ write_files:
           eval "$(devbox global shellenv)" 2>/dev/null || true
       fi
 
+      # ============================================================================
+      # pnpm Configuration
+      # ============================================================================
+
+      # pnpm global package manager
+      # Installed via 'pnpm setup' during cloud-init
+      export PNPM_HOME="/home/cloudops/.local/share/pnpm"
+      case ":$PATH:" in
+        *":$PNPM_HOME:"*) ;;
+        *) export PATH="$PNPM_HOME:$PATH" ;;
+      esac
+      # pnpm end
+
   # Custom .bash_aliases for cloudops user
   - path: /home/cloudops/.bash_aliases
     content: |
@@ -843,6 +856,116 @@ write_files:
         }
       }
 
+  # Maintenance script: Update global tools
+  - path: /home/cloudops/bin/update-global-tools.sh
+    content: |
+      #!/bin/bash
+      # Update global Devbox tools and Claude CLI
+
+      set -e
+
+      # Source bashrc to get PNPM_HOME and devbox environment
+      if [ -f "$HOME/.bashrc" ]; then
+        source "$HOME/.bashrc"
+      fi
+
+      echo "📦 Updating global Devbox packages..."
+      devbox global update
+
+      echo ""
+      echo "🤖 Updating Claude CLI..."
+      if [ -n "$PNPM_HOME" ]; then
+        pnpm update -g @anthropic-ai/claude-code
+      else
+        echo "ERROR: PNPM_HOME not set. Please run: source ~/.bashrc" >&2
+        exit 1
+      fi
+
+      echo ""
+      echo "✅ Update complete! Current versions:"
+      echo "  Node.js: $(node --version 2>/dev/null || echo 'not found')"
+      echo "  pnpm: $(pnpm --version 2>/dev/null || echo 'not found')"
+      echo "  Claude CLI: $(claude --version 2>/dev/null || echo 'not found')"
+
+  # Maintenance script: Health check
+  - path: /home/cloudops/bin/check-devbox-health.sh
+    content: |
+      #!/bin/bash
+      # Verify Devbox and Claude CLI setup
+
+      echo "🔍 Checking Devbox global setup..."
+      echo ""
+
+      # 1. Check Devbox is installed
+      echo "1. Devbox installation:"
+      if command -v devbox &>/dev/null; then
+        echo "   ✅ devbox $(devbox version)"
+      else
+        echo "   ❌ devbox NOT installed"
+      fi
+      echo ""
+
+      # 2. Check global packages
+      echo "2. Devbox global packages:"
+      devbox global list
+      echo ""
+
+      # 3. Check Node.js
+      echo "3. Node.js:"
+      if command -v node &>/dev/null; then
+        echo "   ✅ $(node --version) at $(which node)"
+      else
+        echo "   ❌ node NOT found in PATH"
+      fi
+      echo ""
+
+      # 4. Check pnpm
+      echo "4. pnpm:"
+      if command -v pnpm &>/dev/null; then
+        echo "   ✅ pnpm $(pnpm --version) at $(which pnpm)"
+      else
+        echo "   ❌ pnpm NOT found in PATH"
+      fi
+      echo ""
+
+      # 5. Check Claude CLI
+      echo "5. Claude CLI:"
+      if command -v claude &>/dev/null; then
+        echo "   ✅ $(claude --version) at $(which claude)"
+      else
+        echo "   ❌ claude NOT found in PATH"
+      fi
+      echo ""
+
+      # 6. Check shellenv activation
+      echo "6. Shellenv activation:"
+      if echo $PATH | grep -q "devbox/global"; then
+        echo "   ✅ Shellenv is activated"
+      else
+        echo "   ⚠️  Shellenv NOT activated - run: source ~/.bashrc"
+      fi
+      echo ""
+
+      # 7. Check PNPM_HOME
+      echo "7. PNPM_HOME:"
+      if [ -n "$PNPM_HOME" ]; then
+        echo "   ✅ PNPM_HOME=$PNPM_HOME"
+      else
+        echo "   ⚠️  PNPM_HOME not set - run: source ~/.bashrc"
+      fi
+      echo ""
+
+      # 8. Check templates
+      echo "8. Available templates:"
+      if [ -d ~/.devbox-templates ]; then
+        ls -1 ~/.devbox-templates/ 2>/dev/null | sed 's/^/   ✅ /' || echo "   ⚠️  No templates found"
+      else
+        echo "   ⚠️  Template directory not found"
+      fi
+      echo ""
+
+      echo "🏁 Health check complete!"
+
   # Devbox Quickstart Documentation
   - path: /home/cloudops/.devbox-quickstart.md
     content: |
@@ -1088,7 +1211,7 @@ runcmd:
   # Execute all setup commands in a single logged block with error handling
   - |
     {
-      set -euo pipefail
+      set -eu
       echo "=== CloudOps Setup Started: $(date) ==="
 
       # Create directory structure
@@ -1120,6 +1243,12 @@ runcmd:
       fi
       chmod 644 /home/cloudops/.devbox-quickstart.md
 
+      # Set permissions for maintenance scripts
+      mkdir -p /home/cloudops/bin
+      chown cloudops:cloudops /home/cloudops/bin
+      chmod 755 /home/cloudops/bin/update-global-tools.sh
+      chmod 755 /home/cloudops/bin/check-devbox-health.sh
+
       # Process git configuration templates with environment variables
       echo "Processing git configuration templates..."
 
@@ -1131,11 +1260,11 @@ runcmd:
 
       # Separate warnings for clarity
       if [ "$GIT_USER_NAME" = "CHANGEME" ] || [ "$GIT_USER_EMAIL" = "changeme@example.com" ]; then
-        echo "WARNING: Personal git config using placeholder values. Set GIT_USER_NAME and GIT_USER_EMAIL" >&2
+        echo "WARNING - Personal git config using placeholder values. Set GIT_USER_NAME and GIT_USER_EMAIL" >&2
       fi
 
       if [ "$GIT_WORK_NAME" = "CHANGEME" ] || [ "$GIT_WORK_EMAIL" = "changeme@example.com" ]; then
-        echo "WARNING: Work git config using placeholder values. Set GIT_WORK_NAME and GIT_WORK_EMAIL" >&2
+        echo "WARNING - Work git config using placeholder values. Set GIT_WORK_NAME and GIT_WORK_EMAIL" >&2
       fi
 
       # Process git config templates using sed
@@ -1175,8 +1304,8 @@ runcmd:
 
       # Clean up package cache to reduce disk usage
       echo "Cleaning package cache..."
-      apt-get clean || echo "WARNING: apt-get clean failed (non-critical)"
-      rm -rf /var/cache/apt/archives/* || echo "WARNING: Cache cleanup failed (non-critical)"
+      apt-get clean || echo "WARNING - apt-get clean failed (non-critical)"
+      rm -rf /var/cache/apt/archives/* || echo "WARNING - Cache cleanup failed (non-critical)"
 
       # Install Determinate Nix (system-wide, multi-user mode)
       echo "Installing Determinate Nix..."
@@ -1186,7 +1315,7 @@ runcmd:
           --extra-conf "auto-optimise-store = true" \
           --extra-conf "trusted-users = root cloudops" \
           --extra-conf "experimental-features = nix-command flakes" || \
-          echo "WARNING: Nix installation failed" >&2
+          echo "WARNING - Nix installation failed" >&2
 
         # Source Nix profile to make it available in current shell
         if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
@@ -1199,7 +1328,7 @@ runcmd:
           echo "  - Auto-optimisation enabled (reduces store size by 25-35%)"
           echo "  - Flakes and nix-command enabled"
         else
-          echo "ERROR: Nix installation verification failed" >&2
+          echo "ERROR - Nix installation verification failed" >&2
         fi
       else
         echo "✓ Nix already installed: $(nix --version)"
@@ -1210,23 +1339,46 @@ runcmd:
       if ! su - cloudops -c 'command -v devbox &>/dev/null'; then
         # Install Devbox CLI
         su - cloudops -c 'curl -fsSL https://get.jetify.com/devbox | bash -s -- -f' || \
-          echo "WARNING: Devbox installation failed" >&2
+          echo "WARNING - Devbox installation failed" >&2
 
         # Verify Devbox installation
         if su - cloudops -c 'command -v devbox &>/dev/null'; then
           su - cloudops -c 'devbox version' | head -1 | sed 's/^/✓ Devbox installed: /'
 
-          # Install minimal global CLI tools (minimal overhead, universally useful)
-          echo "  - Installing global tools: jq, yq, gh..."
-          if ! su - cloudops -c 'devbox global add jq yq gh --quiet' 2>&1 | grep -v "^$" | sed 's/^/  /'; then
+          # Install global CLI tools and Claude CLI infrastructure
+          echo "  - Installing global tools: jq, yq, gh, nodejs, pnpm..."
+          if ! timeout 600 su - cloudops -c 'devbox global add jq yq gh nodejs@24.11.0 pnpm@10.20.0 --quiet' 2>&1 | grep -v "^$" | sed 's/^/  /'; then
             echo "  WARNING: Global tools installation failed - check network and Nix store" >&2
           fi
 
           # Initialize devbox global environment
           su - cloudops -c 'eval "$(devbox global shellenv)"' 2>/dev/null || \
-            echo "  WARNING: Global shellenv initialization failed (non-critical)" >&2
+            echo "  WARNING - Global shellenv initialization failed (non-critical)" >&2
+
+          # Define PNPM_HOME path (centralized)
+          PNPM_HOME="/home/cloudops/.local/share/pnpm"
+
+          # Setup pnpm and install Claude CLI
+          echo "  - Setting up pnpm and installing Claude CLI..."
+
+          # Create and run pnpm setup
+          echo "  - Setting up pnpm..."
+          su - cloudops -c 'devbox global run -- bash -c "export SHELL=/bin/bash && pnpm setup"' 2>&1 | grep -v "^$" | sed 's/^/  /' || \
+            echo "  WARNING - pnpm setup failed (non-critical)" >&2
+
+          # Install Claude CLI
+          echo "  - Installing Claude CLI..."
+          su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && pnpm install -g @anthropic-ai/claude-code'" 2>&1 | sed 's/^/  /' || \
+            echo "  WARNING - Claude CLI installation failed" >&2
+
+          # Verify Claude CLI installation
+          if su - cloudops -c "devbox global run -- bash -c 'export PNPM_HOME=\"${PNPM_HOME}\" && export PATH=\"\${PNPM_HOME}:\${PATH}\" && claude --version'" 2>/dev/null; then
+            echo "  ✓ Claude CLI installed successfully"
+          else
+            echo "  WARNING - Claude CLI verification failed" >&2
+          fi
         else
-          echo "ERROR: Devbox installation verification failed" >&2
+          echo "ERROR - Devbox installation verification failed" >&2
         fi
       else
         su - cloudops -c 'devbox version' | head -1 | sed 's/^/✓ Devbox already installed: /'
@@ -1237,7 +1389,7 @@ runcmd:
       if command -v nix-store &>/dev/null; then
         nix-store --optimise 2>/dev/null && \
           echo "✓ Nix store optimized (hard-linked duplicate files)" || \
-          echo "WARNING: Nix store optimization skipped (non-critical)" >&2
+          echo "WARNING - Nix store optimization skipped (non-critical)" >&2
 
         # Display final store size
         STORE_SIZE=$(du -sh /nix/store 2>/dev/null | cut -f1)
@@ -1265,7 +1417,8 @@ final_message: |
   🚀 Devbox Development Environment:
   - Nix package manager installed (auto-optimizing store)
   - Jetify Devbox CLI ready
-  - Global tools: jq, yq, gh
+  - Global tools: jq, yq, gh, nodejs (24.11.0), pnpm (10.20.0)
+  - 🤖 Claude CLI installed globally (accessible everywhere)
   - Templates available: ~/.devbox-templates/
     • nodejs-webapp.json  - Node.js/TypeScript web apps
     • python-api.json    - Python FastAPI/Flask APIs
@@ -1286,6 +1439,15 @@ final_message: |
 
     # Read the quickstart guide
     cat ~/.devbox-quickstart.md
+
+  🛠️  Maintenance Scripts:
+    ~/bin/check-devbox-health.sh  - Verify Devbox, Node.js, pnpm, Claude CLI setup
+    ~/bin/update-global-tools.sh  - Update all global tools and Claude CLI
+
+  🤖 Using Claude CLI:
+    claude --help                 - Show Claude CLI help
+    claude "explain this code"    - Ask Claude to help with code
+    # Claude CLI is available globally - use it anywhere!
 
   ⚠️  IMPORTANT: Customize your configuration
   - Edit ~/.gitconfig to set your personal name and email
