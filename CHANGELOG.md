@@ -7,10 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2025-11-15
+
+### Added
+- **Claude CLI Integration**: Global installation of Claude CLI (@anthropic-ai/claude-code v2.0.42) via npm
+  - Installed globally via npm with custom prefix at `/home/cloudops/.local/share/npm`
+  - Available everywhere without activation (added to PATH in .bashrc)
+  - Maintenance scripts updated to support Claude CLI updates and health checks
+  - Documentation and MOTD updated with Claude CLI usage instructions
+
 ### Changed
+- **Installation Method**: Switched from pnpm to npm for Claude CLI installation
+  - **Technical Context**: After 9 debugging iterations, resolved installation issues caused by pnpm's strict PATH validation in devbox environment
+  - **Root Cause**: pnpm validates that global-bin-dir is in PATH before allowing `pnpm add -g`, which fails in devbox shell as environment doesn't inherit PNPM_HOME from .bashrc
+  - **Solution**: Use npm with configured prefix instead, providing reliable automated installation
+  - npm remains the only package manager for Claude CLI; pnpm continues to be available for general project use
+- **Maintenance Scripts**: Enhanced update-global-tools.sh and check-devbox-health.sh to include Claude CLI
+- **Documentation**: Updated all references to reflect npm-based Claude CLI installation workflow
+
+### Fixed
+- **Critical**: Resolved Claude CLI automated installation failure in devbox environment
+  - Eliminated dependency on PNPM_HOME environment variable inheritance
+  - Ensured reliable, non-interactive installation during cloud-init provisioning
+  - Verified with 300-second timeout and comprehensive error handling
+
+### Testing
+- DevOps validation: 95.5% pass rate (21/22 tests)
+- Claude CLI installation: Verified successful in fresh cloud-init deployment
+- Path configuration: Confirmed Claude CLI accessible globally without manual activation
+
+### Technical Details
+- **npm prefix**: `/home/cloudops/.local/share/npm`
+- **Claude CLI path**: `${NPM_PREFIX}/bin/claude`
+- **Installation command**: `npm install -g @anthropic-ai/claude-code`
+- **Version installed**: @anthropic-ai/claude-code@2.0.42
+- **Timeout**: 300 seconds for installation with network retry
+- **Backward Compatibility**: pnpm remains available for project-level package management
+
+### Documentation
 - Restructured README.md to be more concise and user-friendly (~325 lines, streamlined from previous version)
 - Updated all validation documentation with historical notices indicating issues are resolved
 - Fixed external link in VSCODE_SETUP.md (jetify.com/cloudops → jetify.com/devbox)
+- Added comprehensive Claude CLI troubleshooting section to TROUBLESHOOTING.md
+- Updated DEVBOX_GUIDE.md to clarify npm vs pnpm usage patterns
 
 ### Removed
 - Removed VSCODE_REMOTE_SSH_TEST_REPORT.md (temporary test artifact)
@@ -121,6 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Key Changes |
 |---------|------|-------------|
+| 2.2.0 | 2025-11-15 | Claude CLI integration via npm, installation fix after 9 debug iterations |
 | 2.1.0 | 2025-11-14 | Devbox/Nix integration, 5 project templates |
 | 2.0.0 | 2025-11-13 | **BREAKING**: devbox→cloudops user migration, schema fixes |
 | 1.2.0 | 2025-11-12 | Validation framework, Ubuntu 25.10 compatibility |

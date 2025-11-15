@@ -2,7 +2,7 @@
 
 Comprehensive troubleshooting guide for CloudOps Multipass development environment.
 
-**Last Updated**: 2025-11-14
+**Last Updated**: 2025-11-15
 
 ---
 
@@ -13,6 +13,7 @@ Comprehensive troubleshooting guide for CloudOps Multipass development environme
 - [SSH Connection Issues](#ssh-connection-issues)
 - [VS Code Remote SSH Issues](#vs-code-remote-ssh-issues)
 - [Cloud-init Issues](#cloud-init-issues)
+- [Claude CLI Issues](#claude-cli-issues)
 - [Devbox & Nix Issues](#devbox--nix-issues)
 - [Performance Issues](#performance-issues)
 - [Network Issues](#network-issues)
@@ -572,6 +573,189 @@ multipass exec cloudops -- apt-cache search <package-name>
 
 ---
 
+## Claude CLI Issues
+
+### Claude CLI Not Found in PATH
+
+**Problem**: `claude --version` returns "command not found".
+
+**Diagnosis**:
+
+```bash
+# Check if Claude CLI is installed
+ssh cloudops "which claude"
+
+# Check npm prefix configuration
+ssh cloudops "npm config get prefix"
+
+# Check if npm bin directory is in PATH
+ssh cloudops "echo \$PATH | grep npm"
+
+# List npm global packages
+ssh cloudops "npm list -g --depth=0"
+```
+
+**Solutions**:
+
+1. **Verify installation completed**:
+
+   ```bash
+   # Check if binary exists
+   ssh cloudops "ls -la /home/cloudops/.local/share/npm/bin/claude"
+
+   # If missing, reinstall
+   ssh cloudops "npm install -g @anthropic-ai/claude-code"
+   ```
+
+2. **Check PATH configuration**:
+
+   ```bash
+   # Verify NPM_PREFIX in .bashrc
+   ssh cloudops "grep NPM_PREFIX ~/.bashrc"
+
+   # Should see:
+   # export NPM_PREFIX="/home/cloudops/.local/share/npm"
+   ```
+
+3. **Reload shell configuration**:
+
+   ```bash
+   ssh cloudops "source ~/.bashrc && claude --version"
+   ```
+
+4. **Manual PATH addition** (if needed):
+
+   ```bash
+   # Add to ~/.bashrc
+   ssh cloudops "echo 'export PATH=\"/home/cloudops/.local/share/npm/bin:\$PATH\"' >> ~/.bashrc"
+   ssh cloudops "source ~/.bashrc"
+   ```
+
+### Claude CLI Installation Failed During cloud-init
+
+**Problem**: Cloud-init log shows Claude CLI installation timeout or failure.
+
+**Diagnosis**:
+
+```bash
+# Check cloud-init logs for Claude CLI errors
+multipass exec cloudops -- grep -i "claude" /var/log/cloud-init-output.log
+
+# Check npm installation logs
+multipass exec cloudops -- cat ~/.npm/_logs/*.log 2>/dev/null | tail -50
+```
+
+**Solutions**:
+
+1. **Manual installation** (recommended):
+
+   ```bash
+   ssh cloudops
+
+   # Configure npm prefix
+   npm config set prefix /home/cloudops/.local/share/npm
+
+   # Install Claude CLI with verbose output
+   npm install -g @anthropic-ai/claude-code --verbose
+
+   # Verify installation
+   claude --version
+   ```
+
+2. **Check network connectivity**:
+
+   ```bash
+   # Test npm registry access
+   ssh cloudops "curl -I https://registry.npmjs.org"
+
+   # If network issues, wait and retry
+   ssh cloudops "npm install -g @anthropic-ai/claude-code"
+   ```
+
+3. **Clean npm cache and retry**:
+
+   ```bash
+   ssh cloudops "npm cache clean --force"
+   ssh cloudops "npm install -g @anthropic-ai/claude-code"
+   ```
+
+### Why npm Instead of pnpm for Claude CLI?
+
+**Context**: The project uses pnpm globally, but Claude CLI is installed via npm.
+
+**Technical Explanation**:
+
+After 9 debugging iterations, we discovered that pnpm has strict PATH validation requirements:
+
+- **pnpm behavior**: Before allowing `pnpm add -g`, pnpm validates that `global-bin-dir` exists in `$PATH`
+- **devbox environment issue**: The devbox shell doesn't inherit `PNPM_HOME` from `.bashrc`, causing validation to fail
+- **npm solution**: npm doesn't have this PATH validation requirement and works reliably with a configured prefix
+
+**This is by design** and ensures automated installation works consistently during cloud-init provisioning.
+
+**pnpm is still available** for project-level package management and remains installed globally via devbox.
+
+### Updating Claude CLI
+
+**Problem**: Need to update to latest Claude CLI version.
+
+**Solution**:
+
+```bash
+# Method 1: Use maintenance script
+ssh cloudops "~/bin/update-global-tools.sh"
+
+# Method 2: Manual update
+ssh cloudops "npm update -g @anthropic-ai/claude-code"
+
+# Verify new version
+ssh cloudops "claude --version"
+```
+
+### Claude CLI Authentication Issues
+
+**Problem**: Claude CLI prompts for authentication or API key.
+
+**Solution**:
+
+```bash
+# Claude CLI uses your Anthropic account
+# Follow the authentication flow:
+ssh cloudops "claude --auth"
+
+# Or set API key if using programmatic access
+ssh cloudops "export ANTHROPIC_API_KEY=your-key-here"
+```
+
+### npm Permission Errors
+
+**Problem**: "EACCES: permission denied" when using npm.
+
+**Diagnosis**:
+
+```bash
+# Check ownership of npm prefix
+ssh cloudops "ls -la /home/cloudops/.local/share/npm"
+
+# Check npm configuration
+ssh cloudops "npm config list"
+```
+
+**Solution**:
+
+```bash
+# Fix ownership
+ssh cloudops "sudo chown -R cloudops:cloudops /home/cloudops/.local/share/npm"
+
+# Verify prefix configuration
+ssh cloudops "npm config set prefix /home/cloudops/.local/share/npm"
+
+# Reinstall if needed
+ssh cloudops "npm install -g @anthropic-ai/claude-code"
+```
+
+---
+
 ## Devbox & Nix Issues
 
 ### Package Not Found
@@ -931,8 +1115,8 @@ ssh -vvv cloudops whoami 2>&1
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-14
+**Document Version**: 1.1
+**Last Updated**: 2025-11-15
 **Maintained by**: CloudOps Development Team
 
 **Related Documents**:

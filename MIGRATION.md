@@ -8,6 +8,7 @@ This guide helps you upgrade CloudOps Multipass configurations between major ver
 
 - [Migrating from 1.x to 2.0.0](#migrating-from-1x-to-200)
 - [Migrating from 2.0.0 to 2.1.0](#migrating-from-200-to-210)
+- [Migrating from 2.1.0 to 2.2.0](#migrating-from-210-to-220)
 - [General Migration Best Practices](#general-migration-best-practices)
 
 ---
@@ -217,6 +218,77 @@ You have **two options** for migration:
    # 3. Import with new name: (not currently supported in Multipass)
    # Recommendation: Keep VM name as "devbox" or create fresh VM named "cloudops"
    ```
+
+---
+
+## Migrating from 2.1.0 to 2.2.0
+
+**Release Date**: 2025-11-15
+**Breaking Changes**: No
+
+### What Changed
+
+Version 2.2.0 adds **Claude CLI integration** installed globally via npm. This is an additive change that does not affect existing functionality.
+
+**New Features**:
+- Claude CLI (@anthropic-ai/claude-code v2.0.42) installed globally
+- Available everywhere without activation (added to PATH)
+- Maintenance scripts updated to support Claude CLI
+- npm prefix configured at `/home/cloudops/.local/share/npm`
+
+### Migration Options
+
+#### Option 1: Recreate VM (Recommended)
+
+Get Claude CLI automatically:
+
+```bash
+# Backup your data first
+multipass exec cloudops -- tar -czf /tmp/backup.tar.gz /home/cloudops/code
+
+multipass transfer cloudops:/tmp/backup.tar.gz ./backup.tar.gz
+
+# Delete and recreate
+multipass stop cloudops
+multipass delete cloudops
+multipass purge
+
+# Launch with new config (includes Claude CLI)
+multipass launch --name cloudops --cloud-init cloudops-config-v2.yaml \
+  -c 4 -m 8G -d 40G \
+  -e GIT_USER_NAME="Your Name" \
+  -e GIT_USER_EMAIL="your@email.com"
+
+# Restore data
+multipass transfer ./backup.tar.gz cloudops:/tmp/
+multipass exec cloudops -- tar -xzf /tmp/backup.tar.gz -C /home/cloudops/
+```
+
+#### Option 2: Manual Installation (Keep Existing VM)
+
+Add Claude CLI to your existing VM:
+
+```bash
+# SSH into VM
+ssh cloudops
+
+# Configure npm prefix (already done if you have v2.1.0)
+npm config set prefix /home/cloudops/.local/share/npm
+
+# Install Claude CLI
+npm install -g @anthropic-ai/claude-code
+
+# Verify installation
+claude --version
+
+# PATH should already be configured in ~/.bashrc
+# If not, add:
+echo 'export NPM_PREFIX="/home/cloudops/.local/share/npm"' >> ~/.bashrc
+echo 'export PATH="$NPM_PREFIX/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Result**: Claude CLI now available globally in your VM.
 
 ---
 
@@ -446,6 +518,6 @@ For migration issues:
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-14
+**Document Version**: 1.1
+**Last Updated**: 2025-11-15
 **Maintained by**: CloudOps Development Team
