@@ -1,6 +1,6 @@
 # CloudOps Multipass Development Environment
 
-**Status:** ✅ **Production Ready** | **Last Updated:** 2025-11-15 | **Version:** 2.2.0
+**Status:** ✅ **Production Ready** | **Last Updated:** 2025-11-15 | **Version:** 2.3.0
 
 A production-ready cloud-init configuration for Multipass VMs featuring Ubuntu 25.10, complete development tools, Devbox/Nix integration, Claude CLI, and VS Code Remote SSH support.
 
@@ -325,7 +325,7 @@ MIT License - See LICENSE file for details
 | Nix Package Manager | ✅ Operational | 3.13.1 | 2025-11-15 |
 | Claude CLI | ✅ Installed | 2.0.42 | 2025-11-15 |
 | Node.js (Global) | ✅ Available | 24.11.0 | 2025-11-15 |
-| pnpm (Global) | ✅ Available | 10.20.0 | 2025-11-15 |
+| pnpm | ✅ Per-Project | via Devbox | Add with `devbox add pnpm` |
 
 **Maintained by:** CloudOps Development Team
 **Questions or Issues:** Open an issue on GitHub

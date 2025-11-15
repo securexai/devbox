@@ -9,6 +9,7 @@ This guide helps you upgrade CloudOps Multipass configurations between major ver
 - [Migrating from 1.x to 2.0.0](#migrating-from-1x-to-200)
 - [Migrating from 2.0.0 to 2.1.0](#migrating-from-200-to-210)
 - [Migrating from 2.1.0 to 2.2.0](#migrating-from-210-to-220)
+- [Migrating from 2.2.0 to 2.3.0](#migrating-from-220-to-230)
 - [General Migration Best Practices](#general-migration-best-practices)
 
 ---
@@ -292,6 +293,106 @@ source ~/.bashrc
 
 ---
 
+## Migrating from 2.2.0 to 2.3.0
+
+**Release Date**: 2025-11-15
+**Breaking Changes**: No
+
+### What Changed
+
+Version 2.3.0 removes **global pnpm installation** while maintaining per-project availability via Devbox. This is an architectural simplification that improves deployment speed and aligns better with Devbox's per-project isolation philosophy.
+
+**Changes**:
+- pnpm removed from global Devbox packages (no longer in `devbox global add`)
+- PNPM_HOME environment variable removed from .bashrc
+- pnpm setup removed from cloud-init runcmd phase
+- Health check updated to report pnpm as intentionally not globally installed
+
+**Benefits**:
+- 30-60 seconds faster VM deployment (global pnpm installation eliminated)
+- Fewer failure points during provisioning
+- Better alignment with Devbox's per-project dependency model
+- Cleaner global environment
+
+**Impact**:
+- Existing projects with pnpm in devbox.json continue working identically
+- New projects add pnpm per-project with `devbox add pnpm`
+- No impact on Node.js or npm (still globally available)
+
+### Migration Options
+
+#### Option 1: Recreate VM (Recommended)
+
+Get the optimized configuration automatically:
+
+```bash
+# Backup your data first
+multipass exec cloudops -- tar -czf /tmp/backup.tar.gz /home/cloudops/code
+
+multipass transfer cloudops:/tmp/backup.tar.gz ./backup.tar.gz
+
+# Delete and recreate
+multipass stop cloudops
+multipass delete cloudops
+multipass purge
+
+# Launch with v2.3.0 config (faster deployment)
+multipass launch --name cloudops --cloud-init cloudops-config-v2.yaml \
+  -c 4 -m 8G -d 40G \
+  -e GIT_USER_NAME="Your Name" \
+  -e GIT_USER_EMAIL="your@email.com"
+
+# Restore data
+multipass transfer ./backup.tar.gz cloudops:/tmp/
+multipass exec cloudops -- tar -xzf /tmp/backup.tar.gz -C /home/cloudops/
+```
+
+**Result**: New VM deploys 30-60s faster, no global pnpm, cleaner environment.
+
+#### Option 2: Manual Update (Keep Existing VM)
+
+Remove global pnpm from existing VM (optional, not required for functionality):
+
+```bash
+# SSH into VM
+ssh cloudops
+
+# Remove global pnpm (optional)
+devbox global remove pnpm
+
+# Remove PNPM_HOME from .bashrc (optional)
+sed -i '/PNPM_HOME/d' ~/.bashrc
+sed -i '/pnpm/d' ~/.bashrc
+source ~/.bashrc
+```
+
+**Note**: This is cosmetic only. Existing global pnpm installation does not interfere with per-project pnpm usage.
+
+### Per-Project pnpm Usage
+
+After migration, add pnpm to projects as needed:
+
+```bash
+# In any project directory
+cd ~/code/my-project
+
+# Add pnpm to project
+devbox add pnpm
+
+# Use pnpm within devbox shell
+devbox shell
+pnpm install
+pnpm run dev
+```
+
+**Advantages of per-project pnpm**:
+- Different pnpm versions per project
+- Isolated from global environment
+- Reproducible across team members
+- Declarative in devbox.json
+
+---
+
 ## Migrating from 2.0.0 to 2.1.0
 
 **Release Date**: 2025-11-14
@@ -518,6 +619,6 @@ For migration issues:
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Last Updated**: 2025-11-15
 **Maintained by**: CloudOps Development Team

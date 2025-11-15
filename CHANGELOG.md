@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2025-11-15
+
+### Changed
+- **Architecture Simplification**: Removed global pnpm installation while maintaining per-project availability via Devbox
+  - Removed `pnpm@10.20.0` from `devbox global add` command in cloudops-config-v2.yaml
+  - Removed PNPM_HOME environment variable configuration from .bashrc
+  - Removed pnpm setup block from runcmd cloud-init phase
+  - Updated health check script to report pnpm as intentionally not globally installed
+  - Updated maintenance scripts to remove pnpm version output from global tools
+  - **Rationale**: Global pnpm installation was redundant with per-project Devbox configuration, added deployment time (30-60s), and introduced unnecessary failure points
+  - **Impact**: pnpm remains fully available per-project by adding to devbox.json; existing projects with pnpm in devbox.json continue working unchanged
+
+### Performance
+- Faster VM deployment: 30-60 seconds saved during cloud-init provisioning
+- Reduced Nix store size: No global pnpm packages to store
+- Fewer failure points: Eliminated global pnpm installation step that could timeout or fail
+
+### Documentation
+- Updated DEVBOX_GUIDE.md to clarify pnpm availability model (per-project only)
+- Updated README.md component table to show pnpm as "Per-Project via Devbox"
+- Fixed TROUBLESHOOTING.md to accurately describe pnpm availability
+- Updated MIGRATION.md with upgrade path from 2.2.0 to 2.3.0
+
+### Testing
+- Full deployment test: ✅ Completed successfully (2025-11-15 15:02:00 -05)
+- Global packages verified: ✅ NO pnpm in global packages (as intended)
+- Node.js: ✅ 24.11.0 working
+- Claude CLI: ✅ 2.0.42 working
+- Nix store size: ✅ 905M (similar to v2.2.0, no bloat)
+- Health check: ✅ Correctly reports "pnpm is NOT globally installed (by design)"
+
+### Technical Details
+- **Alignment with Devbox Philosophy**: Devbox is designed for per-project dependency isolation; global pnpm conflicted with this model
+- **Per-Project Usage**: Add pnpm to any project with `devbox add pnpm` in project directory
+- **No Breaking Changes**: Existing projects with pnpm in devbox.json work identically
+- **Backward Compatibility**: Users who need global pnpm can manually install with `devbox global add pnpm`
+
 ## [2.2.0] - 2025-11-15
 
 ### Added
@@ -160,6 +197,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Key Changes |
 |---------|------|-------------|
+| 2.3.0 | 2025-11-15 | Removed global pnpm (30-60s faster deployment, better Devbox alignment) |
 | 2.2.0 | 2025-11-15 | Claude CLI integration via npm, installation fix after 9 debug iterations |
 | 2.1.0 | 2025-11-14 | Devbox/Nix integration, 5 project templates |
 | 2.0.0 | 2025-11-13 | **BREAKING**: devbox→cloudops user migration, schema fixes |

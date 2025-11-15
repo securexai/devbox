@@ -681,7 +681,7 @@ multipass exec cloudops -- cat ~/.npm/_logs/*.log 2>/dev/null | tail -50
 
 ### Why npm Instead of pnpm for Claude CLI?
 
-**Context**: The project uses pnpm globally, but Claude CLI is installed via npm.
+**Context**: pnpm is available per-project via Devbox, but Claude CLI is installed globally via npm.
 
 **Technical Explanation**:
 
@@ -693,7 +693,7 @@ After 9 debugging iterations, we discovered that pnpm has strict PATH validation
 
 **This is by design** and ensures automated installation works consistently during cloud-init provisioning.
 
-**pnpm is still available** for project-level package management and remains installed globally via devbox.
+**pnpm is available** for project-level package management via `devbox add pnpm` (not globally installed).
 
 ### Updating Claude CLI
 
