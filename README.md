@@ -54,10 +54,17 @@ cat ~/.ssh/id_ed25519.pub  # Copy this to the config file
 ### 2. Launch VM
 
 ```bash
+# Quick launch with default git config (requires manual git setup later)
 multipass launch --name cloudops --cloud-init cloudops-config-v2.yaml \
-  -c 4 -m 8G -d 40G \
-  -e GIT_USER_NAME="Your Name" \
-  -e GIT_USER_EMAIL="your@email.com"
+  -c 4 -m 8G -d 40G
+
+# OR: Customize git config first (recommended)
+sed -e 's/__GIT_USER_NAME__/Your Name/g' \
+    -e 's/__GIT_USER_EMAIL__/your@email.com/g' \
+    cloudops-config-v2.yaml > cloudops-config-custom.yaml
+
+multipass launch --name cloudops --cloud-init cloudops-config-custom.yaml \
+  -c 4 -m 8G -d 40G
 ```
 
 **Wait for cloud-init to complete:**
@@ -170,6 +177,7 @@ multipass exec cloudops -- cat /var/log/cloud-init-output.log  # View logs
 
 ### Testing & Validation
 
+- **[WSL + Windows Testing Guide](docs/WSL_WINDOWS_TESTING_GUIDE.md)** - Complete testing workflow for WSL Ubuntu users
 - **[Validation Test Results](docs/testing/)** - Historical validation test results and methodology
 
 ### Migration & Contributing
@@ -260,19 +268,24 @@ code --remote ssh-remote+cloudops /home/cloudops
 
 The config file includes placeholder git settings. Customize before launch:
 
-**Option 1: Environment Variables (Recommended)**
+**Option 1: sed Preprocessing (Recommended)**
 
 ```bash
-multipass launch --name cloudops --cloud-init cloudops-config-v2.yaml \
-  -e GIT_USER_NAME="Your Name" \
-  -e GIT_USER_EMAIL="your@email.com" \
-  -e GIT_WORK_NAME="Work Name" \
-  -e GIT_WORK_EMAIL="work@company.com"
+# Customize git configuration with sed
+sed -e 's/__GIT_USER_NAME__/Your Name/g' \
+    -e 's/__GIT_USER_EMAIL__/your@email.com/g' \
+    -e 's/__GIT_WORK_NAME__/Work Name/g' \
+    -e 's/__GIT_WORK_EMAIL__/work@company.com/g' \
+    cloudops-config-v2.yaml > cloudops-config-custom.yaml
+
+# Launch VM with customized config
+multipass launch --name cloudops --cloud-init cloudops-config-custom.yaml \
+  -c 4 -m 8G -d 40G
 ```
 
 **Option 2: Manual Edit**
 
-Edit `cloudops-config-v2.yaml` lines ~619-650 and replace CHANGEME placeholders.
+Edit `cloudops-config-v2.yaml` lines ~619-650 and replace `__GIT_USER_NAME__`, `__GIT_USER_EMAIL__`, `__GIT_WORK_NAME__`, and `__GIT_WORK_EMAIL__` placeholders with your actual values.
 
 ### VM Resources
 
@@ -317,7 +330,7 @@ MIT License - See LICENSE file for details
 
 | Component | Status | Version | Last Tested |
 |-----------|--------|---------|-------------|
-| Cloud-init Config | ✅ Valid | v2.2.0 | 2025-11-15 |
+| Cloud-init Config | ✅ Valid | v2.3.0 | 2025-11-16 |
 | Ubuntu 25.10 | ✅ Compatible | Oracular | 2025-11-15 |
 | Multipass | ✅ Working | 1.16.1+ | 2025-11-15 |
 | VS Code Remote | ✅ Functional | Latest | 2025-11-15 |

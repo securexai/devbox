@@ -2,23 +2,23 @@
 # Ubuntu 25.10 - CloudOps Configuration (cloudops as default user)
 #
 # IMPORTANT: This is a TEMPLATE configuration with placeholder values.
-# Customize the following sections before use:
-#   - Git user configuration (lines ~619-650)
-#   - Organization-specific aliases (if needed)
+# Customize BEFORE launching the VM:
 #
-# Git Configuration Options:
+# Git Configuration:
+#   Edit the git configuration templates (lines ~658-690) and replace placeholders:
+#     Personal git: __GIT_USER_NAME__ / __GIT_USER_EMAIL__
+#     Work git:     __GIT_WORK_NAME__ / __GIT_WORK_EMAIL__
 #
-#   Option 1: Environment Variables (recommended for automation)
-#     multipass launch --name cloudops --cloud-init cloudops-config-v2.yaml \
-#       -e GIT_USER_NAME="Your Name" \
-#       -e GIT_USER_EMAIL="your@email.com" \
-#       -e GIT_WORK_NAME="Work Name" \
-#       -e GIT_WORK_EMAIL="work@company.com"
+#   Quick setup using sed:
+#     sed -e 's/__GIT_USER_NAME__/Your Name/g' \
+#         -e 's/__GIT_USER_EMAIL__/your@email.com/g' \
+#         -e 's/__GIT_WORK_NAME__/Work Name/g' \
+#         -e 's/__GIT_WORK_EMAIL__/work@company.com/g' \
+#         cloudops-config-v2.yaml > cloudops-config-custom.yaml
 #
-#   Option 2: Manual Edit
-#     Edit the git configuration sections below and replace placeholders:
-#       - CHANGEME / changeme@example.com (personal config)
-#       - CHANGEME / changeme@example.com (work config)
+#   Then launch with customized file:
+#     multipass launch 25.10 --name cloudops --cpus 2 --memory 2GB --disk 10GB \
+#       --cloud-init cloudops-config-custom.yaml
 #
 # Validation:
 #   cloud-init schema --config-file cloudops-config-v2.yaml --annotate
@@ -46,7 +46,7 @@ users:
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     lock_passwd: true
     ssh_authorized_keys:
-      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM9mMEB83S3l0KQEQJrnfMQRX5JEvuKgh5oF4IfbElOr github.com.valium091@passmail.com
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKILgQyk9ZfqSDdEwOJOcae/B/tZSdrF5o6LuqBkd6G3 github.com.valium091@passmail.com
 
 # Package management
 # Cloud-init execution order: 1) update repos, 2) upgrade existing, 3) install new
@@ -1239,52 +1239,42 @@ runcmd:
       chmod 755 /home/cloudops/bin/update-global-tools.sh
       chmod 755 /home/cloudops/bin/check-devbox-health.sh
 
-      # Process git configuration templates with environment variables
+      # Process git configuration templates
       echo "Processing git configuration templates..."
 
-      # Set default values if environment variables are not provided
-      GIT_USER_NAME="${GIT_USER_NAME:-CHANGEME}"
-      GIT_USER_EMAIL="${GIT_USER_EMAIL:-changeme@example.com}"
-      GIT_WORK_NAME="${GIT_WORK_NAME:-CHANGEME}"
-      GIT_WORK_EMAIL="${GIT_WORK_EMAIL:-changeme@example.com}"
-
-      # Separate warnings for clarity
-      if [ "$GIT_USER_NAME" = "CHANGEME" ] || [ "$GIT_USER_EMAIL" = "changeme@example.com" ]; then
-        echo "WARNING - Personal git config using placeholder values. Set GIT_USER_NAME and GIT_USER_EMAIL" >&2
+      # Check if placeholders were replaced (validation)
+      # Note: Use partial matches to avoid sed replacement of validation patterns
+      if grep -q "__GIT_USER_" /home/cloudops/.gitconfig.template 2>/dev/null; then
+        echo "WARNING - Personal git config still contains placeholders. Customize cloud-init YAML before launching." >&2
       fi
 
-      if [ "$GIT_WORK_NAME" = "CHANGEME" ] || [ "$GIT_WORK_EMAIL" = "changeme@example.com" ]; then
-        echo "WARNING - Work git config using placeholder values. Set GIT_WORK_NAME and GIT_WORK_EMAIL" >&2
+      if grep -q "__GIT_WORK_" /home/cloudops/code/work/.gitconfig.template 2>/dev/null; then
+        echo "WARNING - Work git config still contains placeholders. Customize cloud-init YAML before launching." >&2
       fi
 
-      # Process git config templates using sed
+      # Process git config templates (placeholders should already be replaced in YAML)
       process_git_template() {
         local template="$1"
         local output="$2"
-        local name="$3"
-        local email="$4"
-        local label="$5"
+        local label="$3"
 
-        sed -e "s|__GIT_USER_NAME__|${name}|g" \
-            -e "s|__GIT_USER_EMAIL__|${email}|g" \
-            -e "s|__GIT_WORK_NAME__|${name}|g" \
-            -e "s|__GIT_WORK_EMAIL__|${email}|g" \
-            "$template" > "$output"
-
+        # Simply copy template to final location
+        cp "$template" "$output"
         chown cloudops:cloudops "$output"
         chmod 644 "$output"
         rm -f "$template"
-        echo "${label} git config created with user: ${name}"
+
+        # Extract configured name for logging
+        local configured_name=$(grep "name = " "$output" | head -1 | sed 's/.*name = //')
+        echo "${label} git config created with user: ${configured_name}"
       }
 
       # Process personal and work git configs
       [ -f /home/cloudops/.gitconfig.template ] && \
-        process_git_template /home/cloudops/.gitconfig.template /home/cloudops/.gitconfig \
-          "$GIT_USER_NAME" "$GIT_USER_EMAIL" "Personal"
+        process_git_template /home/cloudops/.gitconfig.template /home/cloudops/.gitconfig "Personal"
 
       [ -f /home/cloudops/code/work/.gitconfig.template ] && \
-        process_git_template /home/cloudops/code/work/.gitconfig.template /home/cloudops/code/work/.gitconfig \
-          "$GIT_WORK_NAME" "$GIT_WORK_EMAIL" "Work"
+        process_git_template /home/cloudops/code/work/.gitconfig.template /home/cloudops/code/work/.gitconfig "Work"
 
       # Add auto-switch to cloudops user (idempotent)
       echo "Configuring auto-switch to cloudops user..."
@@ -1447,10 +1437,19 @@ final_message: |
     claude "explain this code"    - Ask Claude to help with code
     # Claude CLI is available globally - use it anywhere!
 
-  ⚠️  IMPORTANT: Customize your configuration
-  - Edit ~/.gitconfig to set your personal name and email
-  - Edit ~/code/work/.gitconfig to set your work identity
-  - Add organization-specific aliases in ~/.bash_aliases if needed
+  ⚠️  IMPORTANT: Git Configuration
+  If you see placeholder values (CHANGEME), you need to customize the cloud-init YAML before launching.
+  Use sed to replace placeholders:
+    sed -e 's/__GIT_USER_NAME__/Your Name/g' \
+        -e 's/__GIT_USER_EMAIL__/your@email.com/g' \
+        -e 's/__GIT_WORK_NAME__/Work Name/g' \
+        -e 's/__GIT_WORK_EMAIL__/work@company.com/g' \
+        cloudops-config-v2.yaml > cloudops-config-custom.yaml
+
+  After VM is running, you can also manually edit:
+  - ~/.gitconfig (personal identity)
+  - ~/code/work/.gitconfig (work identity)
+  - ~/.bash_aliases (custom aliases)
 
   Git dual-identity structure:
   - Personal git config: ~/.gitconfig

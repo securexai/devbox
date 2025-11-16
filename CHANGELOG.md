@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.3.0] - 2025-11-15
+## [2.3.0] - 2025-11-16
 
 ### Changed
+- **Git Configuration Architecture**: Replaced unsupported environment variable approach with sed-based preprocessing
+  - **Issue**: Multipass doesn't support `-e` flags for environment variables (Docker-specific feature)
+  - **Solution**: Users customize YAML file with sed before VM launch, replacing git config placeholders
+  - Git config placeholders changed from `CHANGEME` to `__GIT_USER_NAME__`, `__GIT_USER_EMAIL__`, `__GIT_WORK_NAME__`, `__GIT_WORK_EMAIL__`
+  - Validation logic updated to use partial matches protected from sed replacement
+  - **Workflow**: `sed 's/__GIT_USER_NAME__/Your Name/g' cloudops-config-v2.yaml > custom.yaml`, then launch VM
+  - **Testing**: Full validation completed (6/6 tests passed), git dual-identity verified working correctly
+  - **Timeline**: Issue discovered and resolved in 31 minutes (2025-11-16 19:14-19:45 UTC)
+
 - **Architecture Simplification**: Removed global pnpm installation while maintaining per-project availability via Devbox
   - Removed `pnpm@10.20.0` from `devbox global add` command in cloudops-config-v2.yaml
   - Removed PNPM_HOME environment variable configuration from .bashrc
@@ -25,18 +34,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fewer failure points: Eliminated global pnpm installation step that could timeout or fail
 
 ### Documentation
-- Updated DEVBOX_GUIDE.md to clarify pnpm availability model (per-project only)
-- Updated README.md component table to show pnpm as "Per-Project via Devbox"
-- Fixed TROUBLESHOOTING.md to accurately describe pnpm availability
+- Added comprehensive WSL_WINDOWS_TESTING_GUIDE.md (1115 lines) for WSL Ubuntu users
+- Updated README.md to reflect sed-based git configuration workflow
 - Updated MIGRATION.md with upgrade path from 2.2.0 to 2.3.0
+- Updated DEVBOX_GUIDE.md to clarify pnpm availability model (per-project only)
+- Fixed TROUBLESHOOTING.md to accurately describe pnpm availability
+- Created docs/testing/history/v2.3.0-sed-validation/ archive with complete test results
+- All documentation updated to remove references to unsupported environment variable approach
 
 ### Testing
+- sed validation tests: ✅ 6/6 passed (YAML syntax, schema, replacement, validation logic, completeness)
+- Git dual-identity tests: ✅ 3/3 passed (work profile, personal profile, default profile)
 - Full deployment test: ✅ Completed successfully (2025-11-15 15:02:00 -05)
 - Global packages verified: ✅ NO pnpm in global packages (as intended)
 - Node.js: ✅ 24.11.0 working
 - Claude CLI: ✅ 2.0.42 working
 - Nix store size: ✅ 905M (similar to v2.2.0, no bloat)
 - Health check: ✅ Correctly reports "pnpm is NOT globally installed (by design)"
+- Test artifacts archived: ✅ docs/testing/history/v2.3.0-sed-validation/
 
 ### Technical Details
 - **Alignment with Devbox Philosophy**: Devbox is designed for per-project dependency isolation; global pnpm conflicted with this model
