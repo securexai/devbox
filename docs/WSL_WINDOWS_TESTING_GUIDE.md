@@ -158,19 +158,25 @@ multipass.exe launch 25.10 --name devbox-test --cloud-init cloudops-config-v2.ya
 # Note: Use "25.10" or "questing" for Ubuntu 25.10 Questing Quetzal
 ```
 
-#### Launch with Custom Environment Variables
+#### Launch with Custom Git Configuration
 
 ```bash
-# Personalize the VM during launch
+# First, customize the config with sed (from WSL)
+cd /home/sft/code/devbox
+sed -e 's/__GIT_USER_NAME__/Your Name/g' \
+    -e 's/__GIT_USER_EMAIL__/your@email.com/g' \
+    -e 's/__GIT_WORK_NAME__/Work Name/g' \
+    -e 's/__GIT_WORK_EMAIL__/work@company.com/g' \
+    cloudops-config-v2.yaml > cloudops-config-custom.yaml
+
+# Then launch VM with customized config
 multipass.exe launch \
   --name devbox-test \
-  --cloud-init cloudops-config-v2.yaml \
+  --cloud-init cloudops-config-custom.yaml \
   --cpus 4 \
   --memory 8G \
   --disk 40G \
-  25.10 \
-  -e GIT_USER_NAME="Your Name" \
-  -e GIT_USER_EMAIL="your@email.com"
+  25.10
 ```
 
 **Expected Timeline**:
@@ -334,7 +340,7 @@ multipass.exe exec devbox-test -- bash << 'EOF'
 cat /home/cloudops/.gitconfig | grep -i "CHANGEME\|__GIT_USER"
 
 # If output contains CHANGEME or __GIT_USER__, secrets were NOT injected (expected if no env vars provided)
-# If output shows real email, verify it came from environment variables (not hardcoded)
+# If output shows real email, verify it came from sed preprocessing (not hardcoded)
 EOF
 ```
 
